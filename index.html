@@ -3,13 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>v9.1.0 sweet pain kaleidoscope camera</title>
+    <title>v9.1.5 sweet pain kaleidoscope camera</title>
     <style>
         body, html {
             margin: 0; padding: 0; width: 100%; height: 100%;
             overflow: hidden; background-color: #000;
         }
 
+        /* 專職負責接收 JS 的隨機縮放指令的外殼 */
         #camera-wrapper {
             position: absolute;
             top: 0; left: 0; 
@@ -19,14 +20,11 @@
             will-change: transform;
         }
 
-        /* 萬花筒各格子內的視訊流，繼承你原本的泡泡糖與細緻模糊效果 */
-        .camera-feed-clone {
-            position: absolute;
-            top: 0; left: 0;
-            width: 100vw; height: 100vh;
-            object-fit: cover;
+        /* 將你最完美的 10 秒泡泡糖色相環與 5px 模糊效果，直接套在萬花筒畫布上 */
+        #kaleidoscope-canvas {
+            width: 100%; height: 100%;
+            display: block;
             animation: bubblegum-and-blur 10s linear infinite;
-            transform-origin: top left;
         }
 
         @keyframes bubblegum-and-blur {
@@ -41,6 +39,7 @@
             }
         }
 
+        /* 🥲 表情符號樣式 */
         #overlay-emoji {
             position: absolute;
             top: 50%; left: 50%;
@@ -60,6 +59,7 @@
             visibility: hidden;
         }
 
+        /* 超高頻故障閃白圖層 */
         #flash-layer {
             position: absolute;
             top: 0; left: 0; width: 100vw; height: 100vh;
@@ -78,117 +78,138 @@
 </head>
 <body>
 
-    <div id="camera-wrapper"></div>
+    <div id="camera-wrapper">
+        <canvas id="kaleidoscope-canvas"></canvas>
+    </div>
+    
+    <video id="camera-feed" autoplay playsinline muted style="position:absolute; width:1px; height:1px; opacity:0; pointer-events:none;"></video>
     
     <div id="overlay-emoji">🥲</div>
     <div id="flash-layer"></div>
     <div id="error-msg"></div>
 
     <script>
+        const video = document.getElementById('camera-feed');
+        const canvas = document.getElementById('kaleidoscope-canvas');
+        const ctx = canvas.getContext('2d');
+        
         const cameraWrapper = document.getElementById('camera-wrapper');
         const errorMsg = document.getElementById('error-msg');
         const overlayEmoji = document.getElementById('overlay-emoji');
         const flashLayer = document.getElementById('flash-layer');
 
         let lastScale = 1.00;
-        const videoElements = []; // 用來統一存放所有萬花筒內的視訊克隆體
 
-        // --- 【核心：Fig. 36 萬花筒幾何網格生成器】 ---
-        function generateKaleidoscope() {
-            // 依據螢幕大小動態計算單個 30-60-90 三角形單元的核心尺寸 (H = 長直角邊)
-            const H = Math.max(window.innerWidth, window.innerHeight) * 0.3;
-            // 短直角邊 W = H * tan(30度)
-            const W = H * Math.tan(30 * Math.PI / 180);
-
-            // 設置 12 角對稱星芒 lattice 的網格間距
-            const hSpacing = H * Math.sqrt(3);
-            const vSpacing = 2 * H;
-            
-            const cols = Math.ceil((window.innerWidth + 4 * H) / hSpacing);
-            const rows = Math.ceil((window.innerHeight + 4 * H) / vSpacing);
-
-            // 用一個隱藏的容器把所有碎片裝起來
-            const kContainer = document.createElement('div');
-            kContainer.style.position = 'absolute';
-            kContainer.style.top = '0'; kContainer.style.left = '0';
-            kContainer.style.width = '100vw'; kContainer.style.height = '100vh';
-            cameraWrapper.appendChild(kContainer);
-
-            // 開始無縫舖滿畫面
-            for (let c = -2; c < cols + 2; c++) {
-                for (let r = -2; r < rows + 2; r++) {
-                    let x = c * hSpacing;
-                    let y = r * vSpacing;
-                    
-                    // 奇數欄位依據三角點陣進行錯位 y 軸偏移
-                    if (Math.abs(c) % 2 === 1) {
-                        y += H;
-                    }
-                    
-                    // 在每個中心點，依據 Fig.36 環繞出 12 個 30-60-90 度的鏡像鏡面
-                    for (let i = 0; i < 12; i++) {
-                        const cell = document.createElement('div');
-                        cell.style.position = 'absolute';
-                        cell.style.left = `${x}px`;
-                        cell.style.top = `${y}px`;
-                        cell.style.width = `${W}px`;
-                        cell.style.height = `${H}px`;
-                        cell.style.transformOrigin = 'top left';
-                        // 使用精準的 CSS clip-path 將容器裁切成 Fig.36 的直角三角形
-                        cell.style.clipPath = 'polygon(0% 0%, 0% 100%, 100% 100%)';
-                        cell.style.overflow = 'hidden';
-
-                        // 偶數順時鐘旋轉，奇數鏡像翻轉，達成完璧的物理萬花筒反射線條
-                        if (i % 2 === 0) {
-                            cell.style.transform = `rotate(${i * 30}deg)`;
-                        } else {
-                            cell.style.transform = `rotate(${(i + 1) * 30}deg) scaleX(-1)`;
-                        }
-
-                        // 塞入即時視訊克隆體
-                        const v = document.createElement('video');
-                        v.autoplay = true;
-                        v.playsInline = true;
-                        v.muted = true;
-                        v.className = 'camera-feed-clone';
-                        
-                        cell.appendChild(v);
-                        kContainer.appendChild(cell);
-                        videoElements.push(v);
-                    }
-                }
-            }
-        }
-
-        // 先執行萬花筒網格架設
-        generateKaleidoscope();
-
-        // 啟動相機並分流至所有萬花筒格子
+        // 啟動原生相機
         if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
             const constraints = { video: { facingMode: "environment" }, audio: false };
             
             navigator.mediaDevices.getUserMedia(constraints)
                 .then(function(stream) {
-                    // 將相機串流同時注入到所有的萬花筒視訊碎片中
-                    videoElements.forEach((vid) => {
-                        vid.srcObject = stream;
-                        vid.play();
-                    });
+                    video.srcObject = stream;
                     
-                    // 用第一個視訊流的播放事件來當作全域計時器的起點
-                    videoElements[0].onplaying = () => {
+                    video.onplaying = () => {
                         setTimeout(() => {
                             overlayEmoji.classList.add('fade-out');
                         }, 1000);
                         
+                        // 啟動畫布萬花筒渲染流
+                        requestAnimationFrame(renderKaleidoscope);
+                        
+                        // 啟動不規則高頻閃光與跳躍放大排程
                         scheduleNextGlitch();
                     };
+                    video.play();
                 })
                 .catch(function(err) {
                     errorMsg.innerText = "無法存取相機，請確認已給予權限。";
                 });
         } else {
             errorMsg.innerText = "你的瀏覽器不支援相機功能。";
+        }
+
+        // --- 【核心：Fig. 36 萬花筒畫布渲染引擎】 ---
+        function renderKaleidoscope() {
+            if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                // 確保畫布解析度與螢幕隨時精準對齊
+                if (canvas.width !== window.innerWidth || canvas.height !== window.innerHeight) {
+                    canvas.width = window.innerWidth;
+                    canvas.height = window.innerHeight;
+                }
+
+                const screenWidth = canvas.width;
+                const screenHeight = canvas.height;
+
+                // 清空畫布
+                ctx.clearRect(0, 0, screenWidth, screenHeight);
+
+                // 計算 Fig. 36 的 30-60-90 三角形單元核心尺寸 (H = 長直角邊)
+                const H = Math.max(screenWidth, screenHeight) * 0.4;
+                // 短直角邊 W = H * tan(30度)
+                const W = H * Math.tan(30 * Math.PI / 180);
+
+                // 設置 12 角星芒幾何格柵的無縫鋪滿間距
+                const hSpacing = H * Math.sqrt(3);
+                const vSpacing = H * 2;
+
+                const cols = Math.ceil(screenWidth / hSpacing) + 2;
+                const rows = Math.ceil(screenHeight / vSpacing) + 2;
+
+                // 擷取視訊中央正方形，防止萬花筒拉伸變形
+                const vSize = Math.min(video.videoWidth, video.videoHeight) * 0.6;
+                const sx = (video.videoWidth - vSize) / 2;
+                const sy = (video.videoHeight - vSize) / 2;
+
+                // 微幅飄移矩陣：讓鏡頭內部產生微微的流動感，使萬花筒圖騰更具生命力
+                const driftX = Math.sin(Date.now() / 3000) * (video.videoWidth - vSize) * 0.1;
+                const driftY = Math.cos(Date.now() / 3000) * (video.videoHeight - vSize) * 0.1;
+
+                // 開始鋪設幾何中心點
+                for (let c = -1; c < cols; c++) {
+                    for (let r = -1; r < rows; r++) {
+                        let cx = c * hSpacing;
+                        let cy = r * vSpacing;
+
+                        // 奇數網格點陣錯位偏移
+                        if (Math.abs(c) % 2 === 1) {
+                            cy += H;
+                        }
+
+                        // 環繞每個中心點，依據 Fig. 36 切割出 12 個無縫反射區塊
+                        for (let i = 0; i < 12; i++) {
+                            ctx.save();
+                            ctx.translate(cx, cy);
+                            
+                            // 旋轉出 12 個 30 度的扇形區間
+                            ctx.rotate(i * 30 * Math.PI / 180);
+                            
+                            // 偶數順時針、奇數鏡像反轉，達成完美物理鏡面反射
+                            if (i % 2 === 1) {
+                                ctx.scale(1, -1);
+                            }
+
+                            // 創建 30-60-90 度的直角三角形裁切路徑
+                            ctx.beginPath();
+                            ctx.moveTo(0, 0);
+                            ctx.lineTo(W, H);
+                            ctx.lineTo(0, H);
+                            ctx.closePath();
+                            ctx.clip();
+
+                            // 將相機畫面完美烙印進幾何切片中
+                            ctx.drawImage(
+                                video, 
+                                sx + driftX, sy + driftY, vSize, vSize, 
+                                -W, -H, H * 2, H * 2
+                            );
+                            
+                            ctx.restore();
+                        }
+                    }
+                }
+            }
+            // 每秒 60 格無限循環同步渲染
+            requestAnimationFrame(renderKaleidoscope);
         }
 
         // 隨機故障排程：1秒到3秒間隨機觸發
@@ -200,7 +221,7 @@
                     let randomScale;
                     let targetScaleNum;
 
-                    // 驗證新尺寸與上一次的尺寸至少有 0.5 以上的顯著跳躍差距
+                    // 驗證機制：確保新尺寸與上一次至少有 0.5 以上的顯著跳躍差距，絕不卡死
                     do {
                         randomScale = (Math.random() * 3 + 1).toFixed(2); // 1~4 倍率
                         targetScaleNum = parseFloat(randomScale);
@@ -208,7 +229,7 @@
                     
                     lastScale = targetScaleNum;
                     
-                    // 執行萬花筒全域外殼縮放
+                    // 執行全域外殼縮放
                     cameraWrapper.style.transform = `scale(${randomScale})`;
                     
                     scheduleNextGlitch();
@@ -216,7 +237,7 @@
             }, randomCooldown);
         }
 
-        // 超高頻閃爍演算法（閃爍3~6下）
+        // 超高頻閃爍演算法（一組閃爍3~6下）
         function triggerGlitchCluster(callback) {
             const flashCount = Math.floor(Math.random() * 4) + 3; 
             let currentFlash = 0;
