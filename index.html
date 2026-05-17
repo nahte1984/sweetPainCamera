@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>sweet pain kaleidoscope</title>
+    <title>v10.0 sweet pain kaleidoscope</title>
     <style>
         body, html {
             margin: 0; padding: 0; width: 100%; height: 100%;
@@ -95,6 +95,7 @@
         const overlayEmoji = document.getElementById('overlay-emoji');
         const flashLayer = document.getElementById('flash-layer');
 
+        // 一開始設定為相機原寸大小 (1.00)
         let currentScale = 1.00; 
         let lastScale = 1.00;
 
@@ -123,7 +124,7 @@
             errorMsg.innerText = "你的瀏覽器不支援相機功能。";
         }
 
-        // --- 【全新修復：中心放射 12 等份完璧鏡像渲染引擎】 ---
+        // --- 【中心放射 12 等份完璧鏡像渲染引擎】 ---
         function renderCentralKaleidoscope() {
             if (video.readyState === video.HAVE_ENOUGH_DATA) {
                 if (canvas.width !== window.innerWidth || canvas.height !== window.innerHeight) {
@@ -136,26 +137,22 @@
 
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-                // 計算能覆蓋整個螢幕的半徑
                 const radius = Math.sqrt(cx * cx + cy * cy);
-                const rad30 = 30 * Math.PI / 180; // 30 度的弧度
+                const rad30 = 30 * Math.PI / 180; 
 
-                // 依據隨機縮放倍率計算相機裁切框（達成形狀內放大）
                 const baseVSize = Math.min(video.videoWidth, video.videoHeight) * 0.6;
                 const zoomedVSize = baseVSize / currentScale;
                 
                 const sx = (video.videoWidth - zoomedVSize) / 2;
                 const sy = (video.videoHeight - zoomedVSize) / 2;
 
-                // 內部細微呼吸流動
                 const driftX = Math.sin(Date.now() / 3000) * (video.videoWidth - zoomedVSize) * 0.04;
                 const driftY = Math.cos(Date.now() / 3000) * (video.videoHeight - zoomedVSize) * 0.04;
 
                 for (let i = 0; i < 12; i++) {
                     ctx.save();
-                    ctx.translate(cx, cy); // 移至螢幕正中心
+                    ctx.translate(cx, cy); 
                     
-                    // 【解Bug核心核心】偶數正常旋轉，奇數轉到下一格邊界再反切，徹底消滅黑畫面空間！
                     if (i % 2 === 0) {
                         ctx.rotate(i * rad30);
                     } else {
@@ -163,7 +160,6 @@
                         ctx.scale(1, -1);
                     }
 
-                    // 每一片都共同裁切出完美的 30 度扇形網格
                     ctx.beginPath();
                     ctx.moveTo(0, 0);
                     ctx.lineTo(radius, 0);
@@ -171,7 +167,6 @@
                     ctx.closePath();
                     ctx.clip();
 
-                    // 均勻向外擴散繪製影像
                     ctx.drawImage(
                         video,
                         sx + driftX, sy + driftY, zoomedVSize, zoomedVSize,
@@ -184,32 +179,34 @@
             requestAnimationFrame(renderCentralKaleidoscope);
         }
 
-        // 隨機故障排程：1秒到3秒間隨機觸差
+        // 隨機故障排程：修改為 1 秒到 3.1 秒間隨機觸發
         function scheduleNextGlitch() {
-            const randomCooldown = Math.random() * 2000 + 1000; 
+            // 1000ms 到 3100ms 之間隨機 (範圍長度 2100ms)
+            const randomCooldown = Math.random() * 2100 + 1000; 
             
             setTimeout(() => {
                 triggerGlitchCluster(() => {
                     let randomScale;
                     let targetScaleNum;
 
-                    // 驗證機制：確保尺寸跳躍差距大於 0.5
+                    // 驗證機制：在 1~1.5 窄區間內，確保尺寸跳躍差距大於 0.15 防止視覺卡頓與死鎖
                     do {
-                        randomScale = (Math.random() * 2 + 1).toFixed(2); // 1~4 倍率縮放
+                        randomScale = (Math.random() * 0.5 + 1).toFixed(2); // 修改縮放範圍為 1.00 ~ 1.50
                         targetScaleNum = parseFloat(randomScale);
-                    } while (Math.abs(targetScaleNum - lastScale) < 0.5);
+                    } while (Math.abs(targetScaleNum - lastScale) < 0.15);
                     
                     lastScale = targetScaleNum;
-                    currentScale = targetScaleNum; // 僅更新內部縮放
+                    currentScale = targetScaleNum; // 於最後一下白光後更新內部縮放
                     
                     scheduleNextGlitch();
                 });
             }, randomCooldown);
         }
 
-        // 超高頻閃爍演算法
+        // 超高頻閃爍演算法：修改為每組 1 ~ 6 下超高速白光
         function triggerGlitchCluster(callback) {
-            const flashCount = Math.floor(Math.random() * 4) + 3; 
+            // Math.random() * 6 產生 0~5.xx，無條件捨去後 +1 剛好是 1 ~ 6 下
+            const flashCount = Math.floor(Math.random() * 6) + 1; 
             let currentFlash = 0;
 
             function runSingleFlash() {
