@@ -2,8 +2,8 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>v10.4.5 sweet pain kaleidoscope</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-color=1.0, user-scalable=no">
+    <title>v10.4.6 sweet pain kaleidoscope</title>
     <style>
         body, html {
             margin: 0; padding: 0; width: 100%; height: 100%;
@@ -46,7 +46,7 @@
             background: radial-gradient(circle at center, transparent 20%, rgba(0,0,0,0.5) 65%, rgba(0,0,0,0.92) 100%);
         }
 
-        /* 【究極巨大化】巨幅粗襯線體巨型文字牆 */
+        /* 【極細古典化】精緻細襯線體字體牆 */
         #overlay-text {
             position: absolute;
             top: 0; left: 0; 
@@ -57,12 +57,12 @@
             justify-content: center;
             text-align: center;
             
-            /* 經典重襯線字體 */
-            font-family: Georgia, "Times New Roman", "Times", serif;
-            font-size: 10.5vh; /* 改用 vh 強制讓 7 行文字垂直撐滿整個螢幕上下 */
-            font-weight: 900;  /* 讓字體極度粗重、具備海報印刷感 */
-            line-height: 1.1;  /* 緊密的行距，創造強烈的排版壓縮感 */
-            letter-spacing: -1px;
+            /* 換上最優雅的細線條法式與古典襯線字體 */
+            font-family: "Didot", "Bodoni MT", "Cormorant Garamond", Georgia, serif;
+            font-size: 5.2vh;  /* 精準縮小約 50% */
+            font-weight: 200;  /* 改為極細體 */
+            line-height: 1.3;  /* 讓細字有優雅的呼吸空間 */
+            letter-spacing: 1px; /* 微寬的字距，更顯高級感 */
             color: #ffffff;
             padding: 20px;
             box-sizing: border-box;
@@ -71,8 +71,8 @@
             user-select: none;
             z-index: 20; 
             
-            /* 加深加重的多層次文字陰影，確保在刺眼閃白與鮮豔色彩下依然能被肉眼辨識 */
-            text-shadow: 0px 4px 30px rgba(0, 0, 0, 0.95), 0px 0px 15px rgba(0, 0, 0, 0.8);
+            /* 減輕文字陰影，防止粗重的黑色塊把細字的精緻線條吞噬 */
+            text-shadow: 0px 2px 15px rgba(0, 0, 0, 0.7), 0px 1px 5px rgba(0, 0, 0, 0.5);
             
             transition: opacity 1.2s ease-out, visibility 1.2s ease-out;
             opacity: 1;
@@ -150,7 +150,7 @@
             errorMsg.innerText = "你的瀏覽器不支援相機功能。";
         }
 
-        // 點擊巨大文字本身觸發 fade out 淡出，且防冒泡誤觸拍照
+        // 點擊文字本身觸發 fade out 淡出
         overlayText.addEventListener('pointerdown', (e) => {
             e.stopPropagation(); 
             overlayText.classList.add('fade-out');
@@ -221,7 +221,7 @@
                     let targetScaleNum;
 
                     do {
-                        randomScale = (Math.random() * 0.5 + 1).toFixed(2); // 限制在 1.00 ~ 1.50
+                        randomScale = (Math.random() * 0.5 + 1).toFixed(2); // 穩定在 1.00 ~ 1.50 之間
                         targetScaleNum = parseFloat(randomScale);
                     } while (Math.abs(targetScaleNum - lastScale) < 0.15);
                     
