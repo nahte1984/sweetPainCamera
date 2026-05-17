@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-color=1.0, user-scalable=no">
     <title>sweet pain camera</title>
     <style>
         body, html {
@@ -32,17 +32,16 @@
             }
         }
 
-        /* 🥲 符號的樣式與淡出控制 */
+        /* 🥲 表情符號樣式 */
         #overlay-emoji {
             position: absolute;
             top: 50%; left: 50%;
             transform: translate(-50%, -50%);
-            font-size: 7.5rem; /* 讓表情足夠放大、有衝擊感 */
+            font-size: 7.5rem;
             user-select: none;
             pointer-events: none;
             z-index: 10;
             
-            /* 平滑淡出過渡 */
             transition: opacity 1s ease-out, visibility 1s ease-out;
             opacity: 1;
             visibility: visible;
@@ -51,6 +50,16 @@
         #overlay-emoji.fade-out {
             opacity: 0;
             visibility: hidden;
+        }
+
+        /* 自動故障閃白圖層：故意不加 transition 才能展現銳利、瞬間突發的故障感 */
+        #flash-layer {
+            position: absolute;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background-color: #fff;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 100;
         }
 
         #error-msg {
@@ -63,8 +72,9 @@
 <body>
 
     <video id="camera-feed" autoplay playsinline muted></video>
-    
     <div id="overlay-emoji">🥲</div>
+    
+    <div id="flash-layer"></div>
     
     <div id="error-msg"></div>
 
@@ -72,6 +82,7 @@
         const video = document.getElementById('camera-feed');
         const errorMsg = document.getElementById('error-msg');
         const overlayEmoji = document.getElementById('overlay-emoji');
+        const flashLayer = document.getElementById('flash-layer');
 
         // 啟動相機
         if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
@@ -81,21 +92,61 @@
                 .then(function(stream) {
                     video.srcObject = stream;
                     
-                    // 當相機畫面真正開始播放時才啟動計時
                     video.onplaying = () => {
+                        // 1. 兩秒後表情 fade out
                         setTimeout(() => {
                             overlayEmoji.classList.add('fade-out');
-                        }, 1000); // 1秒後開始淡出，花1秒淡完，剛好兩秒
+                        }, 1000);
+                        
+                        // 2. 畫面動起來後，啟動不規則閃光排程
+                        scheduleNextGlitch();
                     };
                     
                     video.play();
                 })
                 .catch(function(err) {
-                    console.error("相機存取失敗:", err);
                     errorMsg.innerText = "無法存取相機，請確認已給予權限。";
                 });
         } else {
             errorMsg.innerText = "你的瀏覽器不支援相機功能。";
+        }
+
+        // 【核心故障演算法】負責排定下一次閃光聚落的時間（5~10秒之間隨機）
+        function scheduleNextGlitch() {
+            const randomCooldown = Math.random() * 5000 + 5000; // 5000ms ~ 10000ms 隨機
+            setTimeout(() => {
+                triggerGlitchCluster(() => {
+                    // 當這組閃光閃完後，自動排定下一次
+                    scheduleNextGlitch();
+                });
+            }, randomCooldown);
+        }
+
+        // 負責執行「那一組」不規則的連續閃爍
+        function triggerGlitchCluster(callback) {
+            const flashCount = Math.floor(Math.random() * 3) + 2; // 隨機閃 2 ~ 4 下
+            let currentFlash = 0;
+
+            function runSingleFlash() {
+                if (currentFlash >= flashCount) {
+                    callback(); // 閃完了，交棒回給排程器
+                    return;
+                }
+
+                // 隨機亮起強度 (0.6 ~ 1.0 之間，製造忽明忽暗的過載感)
+                flashLayer.style.opacity = (Math.random() * 0.4 + 0.6).toString();
+                
+                // 亮起時間極短且隨機 (15ms ~ 60ms)
+                setTimeout(() => {
+                    flashLayer.style.opacity = '0'; // 熄滅
+                    currentFlash++;
+                    
+                    // 下一下閃光亮起前的冷卻時間也隨機 (40ms ~ 200ms)，形成不規則節奏
+                    setTimeout(runSingleFlash, Math.random() * 160 + 40);
+                }, Math.random() * 45 + 15);
+            }
+
+            runSingleFlash();
         }
     </script>
 </body>
