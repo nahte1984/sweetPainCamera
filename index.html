@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>v0.7.1 sweet pain camera</title>
+    <title>v0.8 sweet pain camera</title>
     <style>
         body, html {
             margin: 0; padding: 0; width: 100%; height: 100%;
@@ -18,7 +18,7 @@
             object-fit: cover;
             pointer-events: none;
             
-            /* 10 秒循環的泡泡糖與呼吸模糊效果 */
+            /* 10 秒循環的泡泡糖與呼吸模糊效果，GPU 執行超流暢 */
             animation: bubblegum-and-blur 10s linear infinite;
         }
 
@@ -57,14 +57,6 @@
             background-color: #fff;
             opacity: 0; pointer-events: none;
             z-index: 100;
-        }
-
-        /* 為了強制開啟手機 GPU 加速而設計的隱藏畫布樣式 */
-        .gpu-canvas {
-            position: absolute;
-            top: 0; left: 0; width: 1px; height: 1px;
-            opacity: 0; pointer-events: none;
-            z-index: -1;
         }
 
         /* 💔 自訂糖果風彈出視窗 💔 */
@@ -107,6 +99,7 @@
             margin-bottom: 8px;
             border: 1px solid rgba(255,255,255,0.2);
             box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            background-color: #222;
         }
 
         .modal-hint {
@@ -200,7 +193,7 @@
 
         // 拍照事件
         window.addEventListener('pointerdown', (e) => {
-            // 如果點擊是在彈出視窗內，或者是相機還沒準備好、拍照中，則不觸發拍照
+            // 如果彈窗開著、相機沒好、或正在捕捉中，則不重複觸發
             if (customModal.classList.contains('show') || video.videoWidth === 0 || isCapturing) return;
             isCapturing = true;
 
@@ -212,7 +205,7 @@
                 flashLayer.style.opacity = '0';
             }, 50);
 
-            // 2. 精準計算當下的濾鏡數值
+            // 2. 精準計算當下畫面的濾鏡數值
             const loopDuration = 10000;
             const elapsed = (Date.now() - animationStartTime) % loopDuration;
             const progress = elapsed / loopDuration;
@@ -223,63 +216,59 @@
 
             const targetFilter = `contrast(120%) saturate(260%) brightness(110%) hue-rotate(${hueRotate}deg) blur(${blurPx}px)`;
 
-            // 3. 建立畫布並【強制塞入 DOM 樹】以激活手機的 GPU 濾鏡渲染能力
-            const rawCanvas = document.createElement('canvas');
-            const filterCanvas = document.createElement('canvas');
-            rawCanvas.className = 'gpu-canvas';
-            filterCanvas.className = 'gpu-canvas';
-            document.body.appendChild(rawCanvas);
-            document.body.appendChild(filterCanvas);
+            // 3. 【核心救星：畫布之橋技術】
+            // 畫布 A：先擷取純淨、無濾鏡的原生視訊格
+            const canvasA = document.createElement('canvas');
+            canvasA.width = video.videoWidth;
+            canvasA.height = video.videoHeight;
+            const ctxA = canvasA.getContext('2d');
+            ctxA.drawImage(video, 0, 0, canvasA.width, canvasA.height);
 
-            rawCanvas.width = video.videoWidth;
-            rawCanvas.height = video.videoHeight;
-            filterCanvas.width = video.videoWidth;
-            filterCanvas.height = video.videoHeight;
+            // 將畫布 A 轉成靜態 Image 物件，強迫瀏覽器解除視訊流限制
+            const tempImg = new Image();
+            tempImg.src = canvasA.toDataURL('image/png');
+            
+            tempImg.onload = () => {
+                // 畫布 B：用來對「靜態圖片」完美套用濾鏡
+                const canvasB = document.createElement('canvas');
+                canvasB.width = video.videoWidth;
+                canvasB.height = video.videoHeight;
+                const ctxB = canvasB.getContext('2d');
+                
+                // 行動端瀏覽器 100% 支援對靜態圖進行 ctx.filter 烙印
+                ctxB.filter = targetFilter;
+                ctxB.drawImage(tempImg, 0, 0, canvasB.width, canvasB.height);
 
-            const rawCtx = rawCanvas.getContext('2d');
-            const filterCtx = filterCanvas.getContext('2d');
+                // 導出最終帶有復古泡泡糖特效的 Base64 圖檔
+                const finalDataURL = canvasB.toDataURL('image/png');
+                
+                // 塞入預覽視窗與下載連結
+                previewImg.src = finalDataURL;
+                btnSave.href = finalDataURL;
+                btnSave.download = `sweet-pain-${Date.now()}.png`;
 
-            // 擷取原生畫面
-            rawCtx.drawImage(video, 0, 0, rawCanvas.width, rawCanvas.height);
-
-            // 注入算好的完美濾鏡，將原生畫布壓製成特效完成圖
-            filterCtx.filter = targetFilter;
-            filterCtx.drawImage(rawCanvas, 0, 0, filterCanvas.width, filterCanvas.height);
-
-            // 轉出高畫質圖片帶入自訂視窗
-            const dataURL = filterCanvas.toDataURL('image/png');
-            previewImg.src = dataURL;
-            btnSave.href = dataURL;
-            btnSave.download = `sweet-pain-${Date.now()}.png`;
-
-            // 清理釋放剛才暫存的 DOM 畫布節點
-            document.body.removeChild(rawCanvas);
-            document.body.removeChild(filterCanvas);
-
-            // 4. 閃白淡出時，優雅滑入自訂視窗，背景視訊完全不會中斷
-            setTimeout(() => {
+                // 4. 滑入自訂彈窗，此時背景的 video 依然在流暢跳動，體驗完美連續！
                 customModal.classList.add('show');
-            }, 300);
+            };
         });
 
-        // 取消按鈕：直接關閉視窗，重置拍照鎖，體驗極其流暢連續
+        // 取消按鈕：直接關閉視窗，重置狀態，背景從不卡死
         btnCancel.addEventListener('pointerdown', (e) => {
-            e.stopPropagation(); // 阻止事件冒泡，防止再次觸發拍照
+            e.stopPropagation(); 
             customModal.classList.remove('show');
             isCapturing = false;
         });
 
-        // 儲存按鈕點擊相容處理
+        // 儲存按鈕：關閉視窗並允許下載
         btnSave.addEventListener('pointerdown', (e) => {
             e.stopPropagation();
-            // 在某些極端極限的手機網頁環境下，如果 download 屬性被系統攔截，使用者依然可以依據提示進行長按儲存
             setTimeout(() => {
                 customModal.classList.remove('show');
                 isCapturing = false;
-            }, 500);
+            }, 300);
         });
 
-        // 防止點擊彈窗空白處誤觸拍照
+        // 防止點擊彈窗內部元件誤觸背景拍照
         modalCardBody.addEventListener('pointerdown', (e) => {
             e.stopPropagation();
         });
