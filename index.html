@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>v9.4.5 sweet pain central kaleidoscope</title>
+    <title>sweet pain kaleidoscope</title>
     <style>
         body, html {
             margin: 0; padding: 0; width: 100%; height: 100%;
@@ -30,7 +30,7 @@
                 filter: contrast(120%) saturate(260%) brightness(110%) hue-rotate(0deg) blur(0px);
             }
             50% {
-                filter: contrast(120%) saturate(260%) brightness(110%) hue-rotate(180deg) blur(5px);
+                filter: contrast(120%) saturate(260%) brightness(110%) hue-rotate(180deg) blur(3.1px);
             }
             100% {
                 filter: contrast(120%) saturate(260%) brightness(110%) hue-rotate(360deg) blur(0px);
@@ -195,7 +195,7 @@
 
                     // 驗證機制：確保尺寸跳躍差距大於 0.5
                     do {
-                        randomScale = (Math.random() * 3 + 1).toFixed(2); // 1~4 倍率縮放
+                        randomScale = (Math.random() * 2 + 1).toFixed(2); // 1~4 倍率縮放
                         targetScaleNum = parseFloat(randomScale);
                     } while (Math.abs(targetScaleNum - lastScale) < 0.5);
                     
