@@ -2,8 +2,8 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>v10.0 sweet pain kaleidoscope</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-color=1.0, user-scalable=no">
+    <title>v10.1.0 sweet pain kaleidoscope</title>
     <style>
         body, html {
             margin: 0; padding: 0; width: 100%; height: 100%;
@@ -18,7 +18,7 @@
             pointer-events: none;
         }
 
-        /* 保持 10 秒泡泡糖色相環與 5px 精緻模糊效果 */
+        /* 保持 10 秒泡泡糖色相環與 3.1px 精緻模糊效果 */
         #kaleidoscope-canvas {
             width: 100%; height: 100%;
             display: block;
@@ -95,7 +95,6 @@
         const overlayEmoji = document.getElementById('overlay-emoji');
         const flashLayer = document.getElementById('flash-layer');
 
-        // 一開始設定為相機原寸大小 (1.00)
         let currentScale = 1.00; 
         let lastScale = 1.00;
 
@@ -149,6 +148,7 @@
                 const driftX = Math.sin(Date.now() / 3000) * (video.videoWidth - zoomedVSize) * 0.04;
                 const driftY = Math.cos(Date.now() / 3000) * (video.videoHeight - zoomedVSize) * 0.04;
 
+                // 步驟一：繪製 12 個萬花筒圖案扇形
                 for (let i = 0; i < 12; i++) {
                     ctx.save();
                     ctx.translate(cx, cy); 
@@ -175,13 +175,27 @@
 
                     ctx.restore();
                 }
+
+                // 步驟二：【新增核心修復】全螢幕無死角繪製 12 道結構黑線，強制補齊中央十字結構
+                ctx.save();
+                ctx.translate(cx, cy);
+                ctx.strokeStyle = '#000000'; // 純黑結構縫線
+                ctx.lineWidth = 1.0;          // 細緻且結構強烈的線條寬度
+                
+                for (let i = 0; i < 12; i++) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, 0);
+                    // 繞中心點每 30 度向外放射一條黑線
+                    ctx.lineTo(radius * Math.cos(i * rad30), radius * Math.sin(i * rad30));
+                    ctx.stroke();
+                }
+                ctx.restore();
             }
             requestAnimationFrame(renderCentralKaleidoscope);
         }
 
-        // 隨機故障排程：修改為 1 秒到 3.1 秒間隨機觸發
+        // 隨機故障排程：1秒到3.1秒間隨機觸發
         function scheduleNextGlitch() {
-            // 1000ms 到 3100ms 之間隨機 (範圍長度 2100ms)
             const randomCooldown = Math.random() * 2100 + 1000; 
             
             setTimeout(() => {
@@ -189,23 +203,21 @@
                     let randomScale;
                     let targetScaleNum;
 
-                    // 驗證機制：在 1~1.5 窄區間內，確保尺寸跳躍差距大於 0.15 防止視覺卡頓與死鎖
                     do {
-                        randomScale = (Math.random() * 0.5 + 1).toFixed(2); // 修改縮放範圍為 1.00 ~ 1.50
+                        randomScale = (Math.random() * 0.5 + 1).toFixed(2); // 1.00 ~ 1.50
                         targetScaleNum = parseFloat(randomScale);
                     } while (Math.abs(targetScaleNum - lastScale) < 0.15);
                     
                     lastScale = targetScaleNum;
-                    currentScale = targetScaleNum; // 於最後一下白光後更新內部縮放
+                    currentScale = targetScaleNum; 
                     
                     scheduleNextGlitch();
                 });
             }, randomCooldown);
         }
 
-        // 超高頻閃爍演算法：修改為每組 1 ~ 6 下超高速白光
+        // 超高頻閃爍演算法：每組 1 ~ 6 下超高速白光
         function triggerGlitchCluster(callback) {
-            // Math.random() * 6 產生 0~5.xx，無條件捨去後 +1 剛好是 1 ~ 6 下
             const flashCount = Math.floor(Math.random() * 6) + 1; 
             let currentFlash = 0;
 
