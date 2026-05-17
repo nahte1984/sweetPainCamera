@@ -118,7 +118,7 @@
             setTimeout(() => {
                 triggerGlitchCluster(() => {
                     // 【修改這裡】範圍拓寬為 1.00 ~ 10.00 倍隨機縮放
-                    const randomScale = (Math.random() * 9 + 1).toFixed(2); 
+                    const randomScale = (Math.random() * 3 + 1).toFixed(2); 
                     cameraWrapper.style.transform = `scale(${randomScale})`;
                     
                     scheduleNextGlitch();
