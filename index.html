@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>sweet pain camera v0.7</title>
+    <title>v0.7.1 sweet pain camera</title>
     <style>
         body, html {
             margin: 0; padding: 0; width: 100%; height: 100%;
@@ -14,14 +14,11 @@
 
         #camera-feed {
             position: absolute;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
+            top: 0; left: 0; width: 100vw; height: 100vh;
             object-fit: cover;
             pointer-events: none;
             
-            /* 10 秒一個循環的泡泡糖與呼吸模糊效果 */
+            /* 10 秒循環的泡泡糖與呼吸模糊效果 */
             animation: bubblegum-and-blur 10s linear infinite;
         }
 
@@ -39,44 +36,112 @@
 
         #overlay-img {
             position: absolute;
-            top: 50%;
-            left: 50%;
+            top: 50%; left: 50%;
             transform: translate(-50%, -50%) scale(1.5);
-            max-width: 70%;
-            max-height: 70%;
+            max-width: 70%; max-height: 70%;
             object-fit: contain;
             pointer-events: none;
             z-index: 10;
             
             transition: opacity 1s ease-out, visibility 1s ease-out;
-            opacity: 1;
-            visibility: visible;
+            opacity: 1; visibility: visible;
         }
 
         #overlay-img.fade-out {
-            opacity: 0;
-            visibility: hidden;
+            opacity: 0; visibility: hidden;
         }
 
         #flash-layer {
             position: absolute;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
+            top: 0; left: 0; width: 100vw; height: 100vh;
             background-color: #fff;
-            opacity: 0;
-            pointer-events: none;
+            opacity: 0; pointer-events: none;
             z-index: 100;
         }
 
-        #error-msg {
+        /* 為了強制開啟手機 GPU 加速而設計的隱藏畫布樣式 */
+        .gpu-canvas {
             position: absolute;
-            top: 20px;
-            left: 20px;
-            color: #ff4a4a;
-            font-family: monospace;
-            z-index: 20;
+            top: 0; left: 0; width: 1px; height: 1px;
+            opacity: 0; pointer-events: none;
+            z-index: -1;
+        }
+
+        /* 💔 自訂糖果風彈出視窗 💔 */
+        #custom-modal {
+            position: absolute;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0, 0, 0, 0.6);
+            display: flex; justify-content: center; align-items: center;
+            z-index: 200;
+            opacity: 0; pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        #custom-modal.show {
+            opacity: 1; pointer-events: auto;
+        }
+
+        .modal-card {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 2px solid rgba(255, 255, 255, 0.25);
+            border-radius: 24px;
+            padding: 20px;
+            width: 80%; max-width: 310px;
+            text-align: center;
+            color: #fff;
+            box-shadow: 0 12px 32px rgba(0,0,0,0.4);
+        }
+
+        .modal-title {
+            font-size: 1.6rem;
+            margin-bottom: 12px;
+            letter-spacing: 4px;
+        }
+
+        #preview-img {
+            width: 100%;
+            border-radius: 14px;
+            margin-bottom: 8px;
+            border: 1px solid rgba(255,255,255,0.2);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+
+        .modal-hint {
+            font-size: 0.75rem;
+            color: #ffb3d9;
+            margin-bottom: 18px;
+            opacity: 0.9;
+        }
+
+        .modal-actions {
+            display: flex; gap: 12px;
+        }
+
+        .modal-actions button, .modal-actions a {
+            flex: 1; padding: 11px; border-radius: 50px; border: none;
+            font-size: 0.9rem; font-weight: bold; cursor: pointer;
+            text-decoration: none; display: inline-block; text-align: center;
+            box-sizing: border-box;
+        }
+
+        #btn-cancel {
+            background: rgba(255, 255, 255, 0.2);
+            color: #fff;
+            border: 1px solid rgba(255,255,255,0.3);
+        }
+
+        #btn-save {
+            background: linear-gradient(45deg, #ff758c, #ff7eb3);
+            color: #fff;
+            box-shadow: 0 4px 12px rgba(255,117,140,0.4);
+        }
+
+        #error-msg {
+            position: absolute; top: 20px; left: 20px;
+            color: #ff4a4a; font-family: monospace; z-index: 20;
             text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
         }
     </style>
@@ -88,39 +153,45 @@
     <div id="flash-layer"></div>
     <div id="error-msg"></div>
 
+    <div id="custom-modal">
+        <div class="modal-card" id="modal-card-body">
+            <div class="modal-title">💔💔💔</div>
+            <img id="preview-img" src="" alt="Captured Photo">
+            <div class="modal-hint">長按圖片可直接加進相簿喔 🫧</div>
+            <div class="modal-actions">
+                <button id="btn-cancel">取消</button>
+                <a id="btn-save" href="#" download="sweet-pain.png">儲存照片</a>
+            </div>
+        </div>
+    </div>
+
     <script>
         const video = document.getElementById('camera-feed');
         const errorMsg = document.getElementById('error-msg');
         const flashLayer = document.getElementById('flash-layer');
         const overlayImg = document.getElementById('overlay-img');
         
+        const customModal = document.getElementById('custom-modal');
+        const previewImg = document.getElementById('preview-img');
+        const btnCancel = document.getElementById('btn-cancel');
+        const btnSave = document.getElementById('btn-save');
+        const modalCardBody = document.getElementById('modal-card-body');
+        
         let isCapturing = false;
-        let animationStartTime = null; // 用來精準對齊 CSS 動畫的時間軸
+        let animationStartTime = null;
 
         if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-            const constraints = {
-                video: { facingMode: "environment" },
-                audio: false
-            };
-
+            const constraints = { video: { facingMode: "environment" }, audio: false };
             navigator.mediaDevices.getUserMedia(constraints)
                 .then(function(stream) {
                     video.srcObject = stream;
-                    
                     video.onplaying = () => {
-                        // 畫面開始播放時，記錄時間起點，確保 JS 算出來的顏色跟 CSS 完全同步
-                        if (!animationStartTime) {
-                            animationStartTime = Date.now();
-                        }
-                        setTimeout(() => {
-                            overlayImg.classList.add('fade-out');
-                        }, 1000);
+                        if (!animationStartTime) animationStartTime = Date.now();
+                        setTimeout(() => { overlayImg.classList.add('fade-out'); }, 1000);
                     };
-                    
                     video.play();
                 })
                 .catch(function(err) {
-                    console.error("相機權限遭拒或發生錯誤: ", err);
                     errorMsg.innerText = "無法存取相機，請確認已給予權限。";
                 });
         } else {
@@ -129,78 +200,88 @@
 
         // 拍照事件
         window.addEventListener('pointerdown', (e) => {
-            if (video.videoWidth === 0 || isCapturing) return;
+            // 如果點擊是在彈出視窗內，或者是相機還沒準備好、拍照中，則不觸發拍照
+            if (customModal.classList.contains('show') || video.videoWidth === 0 || isCapturing) return;
             isCapturing = true;
 
             // 1. 瞬間閃白效果
             flashLayer.style.transition = 'none';
             flashLayer.style.opacity = '1';
-            
             setTimeout(() => {
-                flashLayer.style.transition = 'opacity 1s ease-out';
+                flashLayer.style.transition = 'opacity 0.8s ease-out';
                 flashLayer.style.opacity = '0';
             }, 50);
 
-            // 2. 【核心算法】手動計算點擊當下的 CSS 濾鏡狀態
-            const loopDuration = 10000; // 10秒循環
+            // 2. 精準計算當下的濾鏡數值
+            const loopDuration = 10000;
             const elapsed = (Date.now() - animationStartTime) % loopDuration;
-            const progress = elapsed / loopDuration; // 0 ~ 1 之間的進度值
+            const progress = elapsed / loopDuration;
 
-            // 計算色相角度 (0 ~ 360)
             const hueRotate = Math.floor(progress * 360);
-
-            // 計算模糊像素 (0s 為 0px -> 5s 為 15px -> 10s 回到 0px)
-            let blurPx = 0;
-            if (progress <= 0.5) {
-                blurPx = (progress / 0.5) * 15;
-            } else {
-                blurPx = ((1 - progress) / 0.5) * 15;
-            }
+            let blurPx = progress <= 0.5 ? (progress / 0.5) * 15 : ((1 - progress) / 0.5) * 15;
             blurPx = blurPx.toFixed(1);
 
-            // 組裝出跟 CSS 完全一模一樣的濾鏡字串
             const targetFilter = `contrast(120%) saturate(260%) brightness(110%) hue-rotate(${hueRotate}deg) blur(${blurPx}px)`;
 
-            // 3. 【雙畫布技術】繞過手機 Safari 無法直接對視訊轉濾鏡的 Bug
-            // 畫布 A：先擷取乾淨的原生相機畫面
+            // 3. 建立畫布並【強制塞入 DOM 樹】以激活手機的 GPU 濾鏡渲染能力
             const rawCanvas = document.createElement('canvas');
+            const filterCanvas = document.createElement('canvas');
+            rawCanvas.className = 'gpu-canvas';
+            filterCanvas.className = 'gpu-canvas';
+            document.body.appendChild(rawCanvas);
+            document.body.appendChild(filterCanvas);
+
             rawCanvas.width = video.videoWidth;
             rawCanvas.height = video.videoHeight;
-            const rawCtx = rawCanvas.getContext('2d');
-            rawCtx.drawImage(video, 0, 0, rawCanvas.width, rawCanvas.height);
-
-            // 畫布 B：用來上色與套模糊效果
-            const filterCanvas = document.createElement('canvas');
             filterCanvas.width = video.videoWidth;
             filterCanvas.height = video.videoHeight;
+
+            const rawCtx = rawCanvas.getContext('2d');
             const filterCtx = filterCanvas.getContext('2d');
-            
-            // 注入剛剛算好、帶有時間凍結的完美濾鏡，然後把畫布 A 蓋上去壓製
+
+            // 擷取原生畫面
+            rawCtx.drawImage(video, 0, 0, rawCanvas.width, rawCanvas.height);
+
+            // 注入算好的完美濾鏡，將原生畫布壓製成特效完成圖
             filterCtx.filter = targetFilter;
             filterCtx.drawImage(rawCanvas, 0, 0, filterCanvas.width, filterCanvas.height);
 
-            // 4. 跳出確認視窗，並確保按下任何按鈕後都不卡死
+            // 轉出高畫質圖片帶入自訂視窗
+            const dataURL = filterCanvas.toDataURL('image/png');
+            previewImg.src = dataURL;
+            btnSave.href = dataURL;
+            btnSave.download = `sweet-pain-${Date.now()}.png`;
+
+            // 清理釋放剛才暫存的 DOM 畫布節點
+            document.body.removeChild(rawCanvas);
+            document.body.removeChild(filterCanvas);
+
+            // 4. 閃白淡出時，優雅滑入自訂視窗，背景視訊完全不會中斷
             setTimeout(() => {
-                const saveConfirm = confirm("💔💔💔");
-                
-                if (saveConfirm) {
-                    // 導出帶有精美濾鏡的照片
-                    const dataURL = filterCanvas.toDataURL('image/png');
-                    const link = document.createElement('a');
-                    link.download = `sweet-pain-${Date.now()}.png`;
-                    link.href = dataURL;
-                    link.click();
-                }
-                
-                // 【關鍵修復】無論按確定或取消，都強迫相機重新啟動播放，解除畫面凍結
-                video.play().then(() => {
-                    isCapturing = false;
-                }).catch(err => {
-                    console.log("重啟播放被攔截:", err);
-                    isCapturing = false;
-                });
-                
-            }, 400);
+                customModal.classList.add('show');
+            }, 300);
+        });
+
+        // 取消按鈕：直接關閉視窗，重置拍照鎖，體驗極其流暢連續
+        btnCancel.addEventListener('pointerdown', (e) => {
+            e.stopPropagation(); // 阻止事件冒泡，防止再次觸發拍照
+            customModal.classList.remove('show');
+            isCapturing = false;
+        });
+
+        // 儲存按鈕點擊相容處理
+        btnSave.addEventListener('pointerdown', (e) => {
+            e.stopPropagation();
+            // 在某些極端極限的手機網頁環境下，如果 download 屬性被系統攔截，使用者依然可以依據提示進行長按儲存
+            setTimeout(() => {
+                customModal.classList.remove('show');
+                isCapturing = false;
+            }, 500);
+        });
+
+        // 防止點擊彈窗空白處誤觸拍照
+        modalCardBody.addEventListener('pointerdown', (e) => {
+            e.stopPropagation();
         });
     </script>
 </body>
