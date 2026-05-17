@@ -3,13 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>v0.8 sweet pain camera</title>
+    <title>sweet pain camera</title>
     <style>
         body, html {
             margin: 0; padding: 0; width: 100%; height: 100%;
             overflow: hidden; background-color: #000;
-            cursor: pointer;
-            -webkit-tap-highlight-color: transparent;
         }
 
         #camera-feed {
@@ -18,7 +16,7 @@
             object-fit: cover;
             pointer-events: none;
             
-            /* 10 秒循環的泡泡糖與呼吸模糊效果，GPU 執行超流暢 */
+            /* 10 秒循環的泡泡糖與呼吸模糊效果 */
             animation: bubblegum-and-blur 10s linear infinite;
         }
 
@@ -34,102 +32,25 @@
             }
         }
 
-        #overlay-img {
+        /* 🥲 符號的樣式與淡出控制 */
+        #overlay-emoji {
             position: absolute;
             top: 50%; left: 50%;
-            transform: translate(-50%, -50%) scale(1.5);
-            max-width: 70%; max-height: 70%;
-            object-fit: contain;
+            transform: translate(-50%, -50%);
+            font-size: 7.5rem; /* 讓表情足夠放大、有衝擊感 */
+            user-select: none;
             pointer-events: none;
             z-index: 10;
             
+            /* 平滑淡出過渡 */
             transition: opacity 1s ease-out, visibility 1s ease-out;
-            opacity: 1; visibility: visible;
+            opacity: 1;
+            visibility: visible;
         }
 
-        #overlay-img.fade-out {
-            opacity: 0; visibility: hidden;
-        }
-
-        #flash-layer {
-            position: absolute;
-            top: 0; left: 0; width: 100vw; height: 100vh;
-            background-color: #fff;
-            opacity: 0; pointer-events: none;
-            z-index: 100;
-        }
-
-        /* 💔 自訂糖果風彈出視窗 💔 */
-        #custom-modal {
-            position: absolute;
-            top: 0; left: 0; width: 100vw; height: 100vh;
-            background: rgba(0, 0, 0, 0.6);
-            display: flex; justify-content: center; align-items: center;
-            z-index: 200;
-            opacity: 0; pointer-events: none;
-            transition: opacity 0.3s ease;
-        }
-
-        #custom-modal.show {
-            opacity: 1; pointer-events: auto;
-        }
-
-        .modal-card {
-            background: rgba(255, 255, 255, 0.15);
-            backdrop-filter: blur(15px);
-            -webkit-backdrop-filter: blur(15px);
-            border: 2px solid rgba(255, 255, 255, 0.25);
-            border-radius: 24px;
-            padding: 20px;
-            width: 80%; max-width: 310px;
-            text-align: center;
-            color: #fff;
-            box-shadow: 0 12px 32px rgba(0,0,0,0.4);
-        }
-
-        .modal-title {
-            font-size: 1.6rem;
-            margin-bottom: 12px;
-            letter-spacing: 4px;
-        }
-
-        #preview-img {
-            width: 100%;
-            border-radius: 14px;
-            margin-bottom: 8px;
-            border: 1px solid rgba(255,255,255,0.2);
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-            background-color: #222;
-        }
-
-        .modal-hint {
-            font-size: 0.75rem;
-            color: #ffb3d9;
-            margin-bottom: 18px;
-            opacity: 0.9;
-        }
-
-        .modal-actions {
-            display: flex; gap: 12px;
-        }
-
-        .modal-actions button, .modal-actions a {
-            flex: 1; padding: 11px; border-radius: 50px; border: none;
-            font-size: 0.9rem; font-weight: bold; cursor: pointer;
-            text-decoration: none; display: inline-block; text-align: center;
-            box-sizing: border-box;
-        }
-
-        #btn-cancel {
-            background: rgba(255, 255, 255, 0.2);
-            color: #fff;
-            border: 1px solid rgba(255,255,255,0.3);
-        }
-
-        #btn-save {
-            background: linear-gradient(45deg, #ff758c, #ff7eb3);
-            color: #fff;
-            box-shadow: 0 4px 12px rgba(255,117,140,0.4);
+        #overlay-emoji.fade-out {
+            opacity: 0;
+            visibility: hidden;
         }
 
         #error-msg {
@@ -142,136 +63,40 @@
 <body>
 
     <video id="camera-feed" autoplay playsinline muted></video>
-    <img id="overlay-img" src="start.png" alt="Sweet Pain Start">
-    <div id="flash-layer"></div>
+    
+    <div id="overlay-emoji">🥲</div>
+    
     <div id="error-msg"></div>
-
-    <div id="custom-modal">
-        <div class="modal-card" id="modal-card-body">
-            <div class="modal-title">💔💔💔</div>
-            <img id="preview-img" src="" alt="Captured Photo">
-            <div class="modal-hint">長按圖片可直接加進相簿喔 🫧</div>
-            <div class="modal-actions">
-                <button id="btn-cancel">取消</button>
-                <a id="btn-save" href="#" download="sweet-pain.png">儲存照片</a>
-            </div>
-        </div>
-    </div>
 
     <script>
         const video = document.getElementById('camera-feed');
         const errorMsg = document.getElementById('error-msg');
-        const flashLayer = document.getElementById('flash-layer');
-        const overlayImg = document.getElementById('overlay-img');
-        
-        const customModal = document.getElementById('custom-modal');
-        const previewImg = document.getElementById('preview-img');
-        const btnCancel = document.getElementById('btn-cancel');
-        const btnSave = document.getElementById('btn-save');
-        const modalCardBody = document.getElementById('modal-card-body');
-        
-        let isCapturing = false;
-        let animationStartTime = null;
+        const overlayEmoji = document.getElementById('overlay-emoji');
 
+        // 啟動相機
         if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
             const constraints = { video: { facingMode: "environment" }, audio: false };
+            
             navigator.mediaDevices.getUserMedia(constraints)
                 .then(function(stream) {
                     video.srcObject = stream;
+                    
+                    // 當相機畫面真正開始播放時才啟動計時
                     video.onplaying = () => {
-                        if (!animationStartTime) animationStartTime = Date.now();
-                        setTimeout(() => { overlayImg.classList.add('fade-out'); }, 1000);
+                        setTimeout(() => {
+                            overlayEmoji.classList.add('fade-out');
+                        }, 1000); // 1秒後開始淡出，花1秒淡完，剛好兩秒
                     };
+                    
                     video.play();
                 })
                 .catch(function(err) {
+                    console.error("相機存取失敗:", err);
                     errorMsg.innerText = "無法存取相機，請確認已給予權限。";
                 });
         } else {
             errorMsg.innerText = "你的瀏覽器不支援相機功能。";
         }
-
-        // 拍照事件
-        window.addEventListener('pointerdown', (e) => {
-            // 如果彈窗開著、相機沒好、或正在捕捉中，則不重複觸發
-            if (customModal.classList.contains('show') || video.videoWidth === 0 || isCapturing) return;
-            isCapturing = true;
-
-            // 1. 瞬間閃白效果
-            flashLayer.style.transition = 'none';
-            flashLayer.style.opacity = '1';
-            setTimeout(() => {
-                flashLayer.style.transition = 'opacity 0.8s ease-out';
-                flashLayer.style.opacity = '0';
-            }, 50);
-
-            // 2. 精準計算當下畫面的濾鏡數值
-            const loopDuration = 10000;
-            const elapsed = (Date.now() - animationStartTime) % loopDuration;
-            const progress = elapsed / loopDuration;
-
-            const hueRotate = Math.floor(progress * 360);
-            let blurPx = progress <= 0.5 ? (progress / 0.5) * 15 : ((1 - progress) / 0.5) * 15;
-            blurPx = blurPx.toFixed(1);
-
-            const targetFilter = `contrast(120%) saturate(260%) brightness(110%) hue-rotate(${hueRotate}deg) blur(${blurPx}px)`;
-
-            // 3. 【核心救星：畫布之橋技術】
-            // 畫布 A：先擷取純淨、無濾鏡的原生視訊格
-            const canvasA = document.createElement('canvas');
-            canvasA.width = video.videoWidth;
-            canvasA.height = video.videoHeight;
-            const ctxA = canvasA.getContext('2d');
-            ctxA.drawImage(video, 0, 0, canvasA.width, canvasA.height);
-
-            // 將畫布 A 轉成靜態 Image 物件，強迫瀏覽器解除視訊流限制
-            const tempImg = new Image();
-            tempImg.src = canvasA.toDataURL('image/png');
-            
-            tempImg.onload = () => {
-                // 畫布 B：用來對「靜態圖片」完美套用濾鏡
-                const canvasB = document.createElement('canvas');
-                canvasB.width = video.videoWidth;
-                canvasB.height = video.videoHeight;
-                const ctxB = canvasB.getContext('2d');
-                
-                // 行動端瀏覽器 100% 支援對靜態圖進行 ctx.filter 烙印
-                ctxB.filter = targetFilter;
-                ctxB.drawImage(tempImg, 0, 0, canvasB.width, canvasB.height);
-
-                // 導出最終帶有復古泡泡糖特效的 Base64 圖檔
-                const finalDataURL = canvasB.toDataURL('image/png');
-                
-                // 塞入預覽視窗與下載連結
-                previewImg.src = finalDataURL;
-                btnSave.href = finalDataURL;
-                btnSave.download = `sweet-pain-${Date.now()}.png`;
-
-                // 4. 滑入自訂彈窗，此時背景的 video 依然在流暢跳動，體驗完美連續！
-                customModal.classList.add('show');
-            };
-        });
-
-        // 取消按鈕：直接關閉視窗，重置狀態，背景從不卡死
-        btnCancel.addEventListener('pointerdown', (e) => {
-            e.stopPropagation(); 
-            customModal.classList.remove('show');
-            isCapturing = false;
-        });
-
-        // 儲存按鈕：關閉視窗並允許下載
-        btnSave.addEventListener('pointerdown', (e) => {
-            e.stopPropagation();
-            setTimeout(() => {
-                customModal.classList.remove('show');
-                isCapturing = false;
-            }, 300);
-        });
-
-        // 防止點擊彈窗內部元件誤觸背景拍照
-        modalCardBody.addEventListener('pointerdown', (e) => {
-            e.stopPropagation();
-        });
     </script>
 </body>
 </html>
