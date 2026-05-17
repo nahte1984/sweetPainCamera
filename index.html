@@ -2,8 +2,8 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-color=1.0, user-scalable=no">
-    <title>sweet pain camera</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>v9.0 sweet pain camera</title>
     <style>
         body, html {
             margin: 0; padding: 0; width: 100%; height: 100%;
@@ -16,8 +16,11 @@
             object-fit: cover;
             pointer-events: none;
             
-            /* 10 秒循環的泡泡糖與呼吸模糊效果 */
+            /* 10 秒循環的基礎色彩與呼吸模糊 */
             animation: bubblegum-and-blur 10s linear infinite;
+            
+            /* 設定放大中心點為螢幕正中央，確保瘋狂放大時畫面不會歪掉 */
+            transform-origin: center center;
         }
 
         @keyframes bubblegum-and-blur {
@@ -52,7 +55,7 @@
             visibility: hidden;
         }
 
-        /* 自動故障閃白圖層：故意不加 transition 才能展現銳利、瞬間突發的故障感 */
+        /* 超高頻故障閃白圖層（無過渡，瞬發瞬滅） */
         #flash-layer {
             position: absolute;
             top: 0; left: 0; width: 100vw; height: 100vh;
@@ -73,9 +76,7 @@
 
     <video id="camera-feed" autoplay playsinline muted></video>
     <div id="overlay-emoji">🥲</div>
-    
     <div id="flash-layer"></div>
-    
     <div id="error-msg"></div>
 
     <script>
@@ -93,12 +94,12 @@
                     video.srcObject = stream;
                     
                     video.onplaying = () => {
-                        // 1. 兩秒後表情 fade out
+                        // 兩秒後表情 fade out
                         setTimeout(() => {
                             overlayEmoji.classList.add('fade-out');
                         }, 1000);
                         
-                        // 2. 畫面動起來後，啟動不規則閃光排程
+                        // 啟動不規則高頻閃光與隨機放大排程
                         scheduleNextGlitch();
                     };
                     
@@ -111,39 +112,44 @@
             errorMsg.innerText = "你的瀏覽器不支援相機功能。";
         }
 
-        // 【核心故障演算法】負責排定下一次閃光聚落的時間（5~10秒之間隨機）
+        // 【新排程算法】每 3~5 秒隨機觸發一次
         function scheduleNextGlitch() {
-            const randomCooldown = Math.random() * 5000 + 5000; // 5000ms ~ 10000ms 隨機
+            const randomCooldown = Math.random() * 2000 + 3000; // 3000ms ~ 5000ms
             setTimeout(() => {
                 triggerGlitchCluster(() => {
-                    // 當這組閃光閃完後，自動排定下一次
+                    // 【新規則】當整組超高頻閃光「最後一下」閃完的瞬間：
+                    // 隨機將畫面放大 5 ~ 10 倍（無過渡動畫，產生瞬間跳躍的硬切衝擊感）
+                    const randomScale = (Math.random() * 5 + 5).toFixed(2); // 5.00 ~ 10.00
+                    video.style.transform = `scale(${randomScale})`;
+                    
+                    // 依此規則不斷循環下去
                     scheduleNextGlitch();
                 });
             }, randomCooldown);
         }
 
-        // 負責執行「那一組」不規則的連續閃爍
+        // 【超高頻閃爍演算法】
         function triggerGlitchCluster(callback) {
-            const flashCount = Math.floor(Math.random() * 3) + 2; // 隨機閃 2 ~ 4 下
+            const flashCount = Math.floor(Math.random() * 4) + 3; // 一組隨機閃 3 ~ 6 下
             let currentFlash = 0;
 
             function runSingleFlash() {
                 if (currentFlash >= flashCount) {
-                    callback(); // 閃完了，交棒回給排程器
+                    callback(); // 閃完最後一下，回傳去執行畫面放大
                     return;
                 }
 
-                // 隨機亮起強度 (0.6 ~ 1.0 之間，製造忽明忽暗的過載感)
-                flashLayer.style.opacity = (Math.random() * 0.4 + 0.6).toString();
+                // 強烈的高光過載透明度 (0.7 ~ 1.0)
+                flashLayer.style.opacity = (Math.random() * 0.3 + 0.7).toString();
                 
-                // 亮起時間極短且隨機 (15ms ~ 60ms)
+                // 【5倍快】亮起時間極短：壓縮至 3ms ~ 12ms 之間
                 setTimeout(() => {
                     flashLayer.style.opacity = '0'; // 熄滅
                     currentFlash++;
                     
-                    // 下一下閃光亮起前的冷卻時間也隨機 (40ms ~ 200ms)，形成不規則節奏
-                    setTimeout(runSingleFlash, Math.random() * 160 + 40);
-                }, Math.random() * 45 + 15);
+                    // 【5倍快】下一下閃起前的黑暗間隔：壓縮至 8ms ~ 40ms 之間，形成神經質般的抽搐頻率
+                    setTimeout(runSingleFlash, Math.random() * 32 + 8);
+                }, Math.random() * 9 + 3);
             }
 
             runSingleFlash();
