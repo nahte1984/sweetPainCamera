@@ -9,7 +9,7 @@
             margin: 0; padding: 0; width: 100%; height: 100%;
             overflow: hidden; background-color: #000;
             cursor: pointer;
-            -webkit-tap-highlight-color: transparent; /* 移除手機點擊時的藍色高亮陰影 */
+            -webkit-tap-highlight-color: transparent;
         }
 
         #camera-feed {
@@ -21,18 +21,15 @@
             object-fit: cover;
             pointer-events: none;
             
-            /* 【泡泡糖色相環 + 5秒呼吸模糊效果】 */
-            /* 總長 10 秒的循環：0s清晰 -> 5s極度模糊 -> 10s回到清晰 */
+            /* 泡泡糖色相環 + 5秒呼吸模糊效果 */
             animation: bubblegum-and-blur 10s linear infinite;
         }
 
-        /* 融合色相漸變與呼吸模糊的動畫 */
         @keyframes bubblegum-and-blur {
             0% {
                 filter: contrast(120%) saturate(260%) brightness(110%) hue-rotate(0deg) blur(0px);
             }
             50% {
-                /* 5 秒時達到模糊最大值 (15px)，色相也剛好轉到一半 */
                 filter: contrast(120%) saturate(260%) brightness(110%) hue-rotate(180deg) blur(15px);
             }
             100% {
@@ -40,12 +37,11 @@
             }
         }
 
-        /* start.png 樣式調整 */
+        /* start.png 基礎樣式 */
         #overlay-img {
             position: absolute;
             top: 50%;
             left: 50%;
-            /* 透過 scale(1.5) 比原本放大 1.5 倍 */
             transform: translate(-50%, -50%) scale(1.5);
             max-width: 70%;
             max-height: 70%;
@@ -53,16 +49,16 @@
             pointer-events: none;
             z-index: 10;
             
-            /* 出現 1 秒後，花 1 秒的時間淡出 (fade out) 隱藏 */
-            animation: start-image-fade 1s ease-out forwards;
-            animation-delay: 1s;
+            /* 改用 CSS Transition，方便由 JS 精準控制何時淡出 */
+            transition: opacity 1s ease-out, visibility 1s ease-out;
+            opacity: 1;
+            visibility: visible;
         }
 
-        @keyframes start-image-fade {
-            to {
-                opacity: 0;
-                visibility: hidden;
-            }
+        /* 當相機成功運作後，由 JS 加上這個 class 來執行淡出 */
+        #overlay-img.fade-out {
+            opacity: 0;
+            visibility: hidden;
         }
 
         /* 拍照閃光燈效果層 */
@@ -97,22 +93,20 @@
     <img id="overlay-img" src="start.png" alt="Sweet Pain Start">
     
     <div id="flash-layer"></div>
-    
     <div id="error-msg"></div>
 
     <script>
         const video = document.getElementById('camera-feed');
         const errorMsg = document.getElementById('error-msg');
         const flashLayer = document.getElementById('flash-layer');
+        const overlayImg = document.getElementById('overlay-img');
         let isCapturing = false;
 
         // 檢查瀏覽器是否支援相機 API
         if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
             
             const constraints = {
-                video: {
-                    facingMode: "environment" // 後置鏡頭
-                },
+                video: { facingMode: "environment" },
                 audio: false
             };
 
@@ -120,7 +114,15 @@
             navigator.mediaDevices.getUserMedia(constraints)
                 .then(function(stream) {
                     video.srcObject = stream;
-                    video.play(); // 強制觸發播放，確保手機版順暢運作
+                    
+                    // 當影片真正開始播放（使用者已同意權限且畫面出來了）才觸發計時
+                    video.onplaying = () => {
+                        setTimeout(() => {
+                            overlayImg.classList.add('fade-out');
+                        }, 1000); // 出現一秒後開始 fade out
+                    };
+                    
+                    video.play();
                 })
                 .catch(function(err) {
                     console.error("相機權限遭拒或發生錯誤: ", err);
@@ -130,39 +132,32 @@
             errorMsg.innerText = "你的瀏覽器不支援相機功能。";
         }
 
-        // 使用 pointerdown 能完美相容手機觸控與電腦滑鼠點擊，反應更即時
+        // 拍照事件
         window.addEventListener('pointerdown', (e) => {
-            // 如果相機還沒準備好寬度，或正在拍照中，就先不響應
             if (video.videoWidth === 0 || isCapturing) return;
             
             isCapturing = true;
 
-            // --- 瞬間閃白效果 ---
+            // 瞬間閃白效果
             flashLayer.style.transition = 'none';
             flashLayer.style.opacity = '1';
             
-            // 讓全白在 1 秒內優雅地淡出
             setTimeout(() => {
                 flashLayer.style.transition = 'opacity 1s ease-out';
                 flashLayer.style.opacity = '0';
             }, 50);
 
-            // --- 擷取當下帶有模糊與色彩漸變的畫面 ---
+            // 擷取畫布
             const canvas = document.createElement('canvas');
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
             const ctx = canvas.getContext('2d');
 
-            // 擷取當下畫面的 CSS Filter 樣式（包含當時變糊、變色的數值）
             const currentFilter = window.getComputedStyle(video).filter;
             ctx.filter = currentFilter;
-            
-            // 將畫面畫上 canvas
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-            // 稍微等待閃白淡出後，跳出心碎的確認視窗
             setTimeout(() => {
-                // 將提示文字修改為 💔💔💔
                 const saveConfirm = confirm("💔💔💔");
                 
                 if (saveConfirm) {
