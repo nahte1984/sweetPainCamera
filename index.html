@@ -3,12 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SweetPainCamera</title>
+    <title>sweet pain camera</title>
     <style>
         body, html {
             margin: 0; padding: 0; width: 100%; height: 100%;
             overflow: hidden; background-color: #000;
-            cursor: pointer; /* 提示使用者整個螢幕都可以點擊 */
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent; /* 移除手機點擊時的藍色高亮陰影 */
         }
 
         #camera-feed {
@@ -17,37 +18,51 @@
             left: 0;
             width: 100vw;
             height: 100vh;
-            object-fit: cover; /* 確保相機畫面填滿螢幕不變形 */
+            object-fit: cover;
             pointer-events: none;
             
-            /* 【80s 泡泡糖糖果風】基礎濾鏡：高飽和度、輕微高對比與明亮感 */
-            /* 透過 CSS animation 讓色相（hue-rotate）動態循環，創造不斷流動的迷幻糖果色彩 */
-            animation: bubblegum-gradient 12s linear infinite;
+            /* 【泡泡糖色相環 + 5秒呼吸模糊效果】 */
+            /* 總長 10 秒的循環：0s清晰 -> 5s極度模糊 -> 10s回到清晰 */
+            animation: bubblegum-and-blur 10s linear infinite;
         }
 
-        /* 色相環緩慢漸變動畫 */
-        @keyframes bubblegum-gradient {
+        /* 融合色相漸變與呼吸模糊的動畫 */
+        @keyframes bubblegum-and-blur {
             0% {
-                filter: contrast(120%) saturate(260%) brightness(110%) hue-rotate(0deg);
+                filter: contrast(120%) saturate(260%) brightness(110%) hue-rotate(0deg) blur(0px);
+            }
+            50% {
+                /* 5 秒時達到模糊最大值 (15px)，色相也剛好轉到一半 */
+                filter: contrast(120%) saturate(260%) brightness(110%) hue-rotate(180deg) blur(15px);
             }
             100% {
-                filter: contrast(120%) saturate(260%) brightness(110%) hue-rotate(360deg);
+                filter: contrast(120%) saturate(260%) brightness(110%) hue-rotate(360deg) blur(0px);
             }
         }
 
-        /* 替換原本的文字，改為置中讀取 start.png */
+        /* start.png 樣式調整 */
         #overlay-img {
             position: absolute;
             top: 50%;
             left: 50%;
-            transform: translate(-50%, -50%);
+            /* 透過 scale(1.5) 比原本放大 1.5 倍 */
+            transform: translate(-50%, -50%) scale(1.5);
             max-width: 70%;
             max-height: 70%;
             object-fit: contain;
-            pointer-events: none; /* 讓點擊事件可以穿透圖層，不影響拍照 */
+            pointer-events: none;
             z-index: 10;
-            /* 如果想讓圖片也融入色彩變幻，可以解開下方註解；若想保持原圖顏色則維持現狀 */
-            /* mix-blend-mode: soft-light; */
+            
+            /* 出現 1 秒後，花 1 秒的時間淡出 (fade out) 隱藏 */
+            animation: start-image-fade 1s ease-out forwards;
+            animation-delay: 1s;
+        }
+
+        @keyframes start-image-fade {
+            to {
+                opacity: 0;
+                visibility: hidden;
+            }
         }
 
         /* 拍照閃光燈效果層 */
@@ -89,14 +104,14 @@
         const video = document.getElementById('camera-feed');
         const errorMsg = document.getElementById('error-msg');
         const flashLayer = document.getElementById('flash-layer');
-        let isCapturing = false; // 防止連續點擊導致重複觸發
+        let isCapturing = false;
 
         // 檢查瀏覽器是否支援相機 API
         if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
             
             const constraints = {
                 video: {
-                    facingMode: "environment" // 強制使用後置鏡頭
+                    facingMode: "environment" // 後置鏡頭
                 },
                 audio: false
             };
@@ -105,6 +120,7 @@
             navigator.mediaDevices.getUserMedia(constraints)
                 .then(function(stream) {
                     video.srcObject = stream;
+                    video.play(); // 強制觸發播放，確保手機版順暢運作
                 })
                 .catch(function(err) {
                     console.error("相機權限遭拒或發生錯誤: ", err);
@@ -114,47 +130,42 @@
             errorMsg.innerText = "你的瀏覽器不支援相機功能。";
         }
 
-        // 3. 點擊/觸控螢幕啟動拍照與閃白效果
-        window.addEventListener('click', () => {
-            // 如果影片還沒載入完成或正在處理拍照，則不觸發
-            if (video.readyState !== video.HAVE_ENOUGH_DATA || isCapturing) return;
+        // 使用 pointerdown 能完美相容手機觸控與電腦滑鼠點擊，反應更即時
+        window.addEventListener('pointerdown', (e) => {
+            // 如果相機還沒準備好寬度，或正在拍照中，就先不響應
+            if (video.videoWidth === 0 || isCapturing) return;
             
             isCapturing = true;
 
-            // --- 閃白特效 (約1秒) ---
+            // --- 瞬間閃白效果 ---
             flashLayer.style.transition = 'none';
-            flashLayer.style.opacity = '1'; // 瞬間變全白
+            flashLayer.style.opacity = '1';
             
-            // 讓白色微調後在 1 秒內緩緩淡出
+            // 讓全白在 1 秒內優雅地淡出
             setTimeout(() => {
                 flashLayer.style.transition = 'opacity 1s ease-out';
                 flashLayer.style.opacity = '0';
             }, 50);
 
-            // --- 擷取當下畫面與濾鏡 ---
-            // 建立一個隱藏的 canvas 來畫圖
+            // --- 擷取當下帶有模糊與色彩漸變的畫面 ---
             const canvas = document.createElement('canvas');
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
             const ctx = canvas.getContext('2d');
 
-            /* 【技術重點】
-              為了精準捕捉點擊當下「色相環漸變動畫」的繽紛顏色，
-              我們直接抓取 video 標籤當前的計算樣式 (Computed Style) 中的 filter 屬性，
-              並直接注入到 canvas 的 context 濾鏡中！這樣拍出來的圖就會帶有當下的泡泡糖 Vibe。
-            */
+            // 擷取當下畫面的 CSS Filter 樣式（包含當時變糊、變色的數值）
             const currentFilter = window.getComputedStyle(video).filter;
             ctx.filter = currentFilter;
             
-            // 將視訊畫面繪製到 canvas 上
+            // 將畫面畫上 canvas
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-            // 閃白淡出差不多時，跳出詢問視窗問使用者要不要存檔
+            // 稍微等待閃白淡出後，跳出心碎的確認視窗
             setTimeout(() => {
-                const saveConfirm = confirm("捕捉到可愛的瞬間了！要儲存這張照片嗎？");
+                // 將提示文字修改為 💔💔💔
+                const saveConfirm = confirm("💔💔💔");
                 
                 if (saveConfirm) {
-                    // 轉成 base64 圖片並觸發下載
                     const dataURL = canvas.toDataURL('image/png');
                     const link = document.createElement('a');
                     link.download = `sweet-pain-${Date.now()}.png`;
@@ -162,9 +173,8 @@
                     link.click();
                 }
                 
-                // 解除點擊鎖定
                 isCapturing = false;
-            }, 400); // 在閃白過後不久即跳出提示，感官體驗最流暢
+            }, 400);
         });
     </script>
 </body>
