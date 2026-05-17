@@ -21,7 +21,7 @@
             object-fit: cover;
             pointer-events: none;
             
-            /* 泡泡糖色相環 + 5秒呼吸模糊效果 */
+            /* 10 秒一個循環的泡泡糖與呼吸模糊效果 */
             animation: bubblegum-and-blur 10s linear infinite;
         }
 
@@ -37,7 +37,6 @@
             }
         }
 
-        /* start.png 基礎樣式 */
         #overlay-img {
             position: absolute;
             top: 50%;
@@ -49,19 +48,16 @@
             pointer-events: none;
             z-index: 10;
             
-            /* 改用 CSS Transition，方便由 JS 精準控制何時淡出 */
             transition: opacity 1s ease-out, visibility 1s ease-out;
             opacity: 1;
             visibility: visible;
         }
 
-        /* 當相機成功運作後，由 JS 加上這個 class 來執行淡出 */
         #overlay-img.fade-out {
             opacity: 0;
             visibility: hidden;
         }
 
-        /* 拍照閃光燈效果層 */
         #flash-layer {
             position: absolute;
             top: 0;
@@ -74,7 +70,6 @@
             z-index: 100;
         }
 
-        /* 錯誤訊息提示區塊 */
         #error-msg {
             position: absolute;
             top: 20px;
@@ -89,9 +84,7 @@
 <body>
 
     <video id="camera-feed" autoplay playsinline muted></video>
-    
     <img id="overlay-img" src="start.png" alt="Sweet Pain Start">
-    
     <div id="flash-layer"></div>
     <div id="error-msg"></div>
 
@@ -100,26 +93,28 @@
         const errorMsg = document.getElementById('error-msg');
         const flashLayer = document.getElementById('flash-layer');
         const overlayImg = document.getElementById('overlay-img');
+        
         let isCapturing = false;
+        let animationStartTime = null; // 用來精準對齊 CSS 動畫的時間軸
 
-        // 檢查瀏覽器是否支援相機 API
         if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-            
             const constraints = {
                 video: { facingMode: "environment" },
                 audio: false
             };
 
-            // 呼叫相機
             navigator.mediaDevices.getUserMedia(constraints)
                 .then(function(stream) {
                     video.srcObject = stream;
                     
-                    // 當影片真正開始播放（使用者已同意權限且畫面出來了）才觸發計時
                     video.onplaying = () => {
+                        // 畫面開始播放時，記錄時間起點，確保 JS 算出來的顏色跟 CSS 完全同步
+                        if (!animationStartTime) {
+                            animationStartTime = Date.now();
+                        }
                         setTimeout(() => {
                             overlayImg.classList.add('fade-out');
-                        }, 1000); // 出現一秒後開始 fade out
+                        }, 1000);
                     };
                     
                     video.play();
@@ -135,10 +130,9 @@
         // 拍照事件
         window.addEventListener('pointerdown', (e) => {
             if (video.videoWidth === 0 || isCapturing) return;
-            
             isCapturing = true;
 
-            // 瞬間閃白效果
+            // 1. 瞬間閃白效果
             flashLayer.style.transition = 'none';
             flashLayer.style.opacity = '1';
             
@@ -147,28 +141,65 @@
                 flashLayer.style.opacity = '0';
             }, 50);
 
-            // 擷取畫布
-            const canvas = document.createElement('canvas');
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            const ctx = canvas.getContext('2d');
+            // 2. 【核心算法】手動計算點擊當下的 CSS 濾鏡狀態
+            const loopDuration = 10000; // 10秒循環
+            const elapsed = (Date.now() - animationStartTime) % loopDuration;
+            const progress = elapsed / loopDuration; // 0 ~ 1 之間的進度值
 
-            const currentFilter = window.getComputedStyle(video).filter;
-            ctx.filter = currentFilter;
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            // 計算色相角度 (0 ~ 360)
+            const hueRotate = Math.floor(progress * 360);
 
+            // 計算模糊像素 (0s 為 0px -> 5s 為 15px -> 10s 回到 0px)
+            let blurPx = 0;
+            if (progress <= 0.5) {
+                blurPx = (progress / 0.5) * 15;
+            } else {
+                blurPx = ((1 - progress) / 0.5) * 15;
+            }
+            blurPx = blurPx.toFixed(1);
+
+            // 組裝出跟 CSS 完全一模一樣的濾鏡字串
+            const targetFilter = `contrast(120%) saturate(260%) brightness(110%) hue-rotate(${hueRotate}deg) blur(${blurPx}px)`;
+
+            // 3. 【雙畫布技術】繞過手機 Safari 無法直接對視訊轉濾鏡的 Bug
+            // 畫布 A：先擷取乾淨的原生相機畫面
+            const rawCanvas = document.createElement('canvas');
+            rawCanvas.width = video.videoWidth;
+            rawCanvas.height = video.videoHeight;
+            const rawCtx = rawCanvas.getContext('2d');
+            rawCtx.drawImage(video, 0, 0, rawCanvas.width, rawCanvas.height);
+
+            // 畫布 B：用來上色與套模糊效果
+            const filterCanvas = document.createElement('canvas');
+            filterCanvas.width = video.videoWidth;
+            filterCanvas.height = video.videoHeight;
+            const filterCtx = filterCanvas.getContext('2d');
+            
+            // 注入剛剛算好、帶有時間凍結的完美濾鏡，然後把畫布 A 蓋上去壓製
+            filterCtx.filter = targetFilter;
+            filterCtx.drawImage(rawCanvas, 0, 0, filterCanvas.width, filterCanvas.height);
+
+            // 4. 跳出確認視窗，並確保按下任何按鈕後都不卡死
             setTimeout(() => {
                 const saveConfirm = confirm("💔💔💔");
                 
                 if (saveConfirm) {
-                    const dataURL = canvas.toDataURL('image/png');
+                    // 導出帶有精美濾鏡的照片
+                    const dataURL = filterCanvas.toDataURL('image/png');
                     const link = document.createElement('a');
                     link.download = `sweet-pain-${Date.now()}.png`;
                     link.href = dataURL;
                     link.click();
                 }
                 
-                isCapturing = false;
+                // 【關鍵修復】無論按確定或取消，都強迫相機重新啟動播放，解除畫面凍結
+                video.play().then(() => {
+                    isCapturing = false;
+                }).catch(err => {
+                    console.log("重啟播放被攔截:", err);
+                    isCapturing = false;
+                });
+                
             }, 400);
         });
     </script>
