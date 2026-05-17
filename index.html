@@ -2,8 +2,8 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-color=1.0, user-scalable=no">
-    <title>v10.1.0 sweet pain kaleidoscope</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>v10.2.0 sweet pain kaleidoscope</title>
     <style>
         body, html {
             margin: 0; padding: 0; width: 100%; height: 100%;
@@ -148,7 +148,9 @@
                 const driftX = Math.sin(Date.now() / 3000) * (video.videoWidth - zoomedVSize) * 0.04;
                 const driftY = Math.cos(Date.now() / 3000) * (video.videoHeight - zoomedVSize) * 0.04;
 
-                // 步驟一：繪製 12 個萬花筒圖案扇形
+                // 微幅重疊量（弧度），用來徹底熔接、消滅反鋸齒所產生的黑縫隙
+                const pad = 0.003;
+
                 for (let i = 0; i < 12; i++) {
                     ctx.save();
                     ctx.translate(cx, cy); 
@@ -160,10 +162,11 @@
                         ctx.scale(1, -1);
                     }
 
+                    // 【重合裁切優化】讓裁切扇形稍微多延伸 pad 的角度，使各切片無縫貼合
                     ctx.beginPath();
                     ctx.moveTo(0, 0);
                     ctx.lineTo(radius, 0);
-                    ctx.lineTo(radius * Math.cos(rad30), radius * Math.sin(rad30));
+                    ctx.lineTo(radius * Math.cos(rad30 + pad), radius * Math.sin(rad30 + pad));
                     ctx.closePath();
                     ctx.clip();
 
@@ -175,21 +178,6 @@
 
                     ctx.restore();
                 }
-
-                // 步驟二：【新增核心修復】全螢幕無死角繪製 12 道結構黑線，強制補齊中央十字結構
-                ctx.save();
-                ctx.translate(cx, cy);
-                ctx.strokeStyle = '#000000'; // 純黑結構縫線
-                ctx.lineWidth = 1.0;          // 細緻且結構強烈的線條寬度
-                
-                for (let i = 0; i < 12; i++) {
-                    ctx.beginPath();
-                    ctx.moveTo(0, 0);
-                    // 繞中心點每 30 度向外放射一條黑線
-                    ctx.lineTo(radius * Math.cos(i * rad30), radius * Math.sin(i * rad30));
-                    ctx.stroke();
-                }
-                ctx.restore();
             }
             requestAnimationFrame(renderCentralKaleidoscope);
         }
