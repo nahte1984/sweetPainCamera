@@ -3,24 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>v9.0.1 sweet pain camera</title>
+    <title>v9.0.3 sweet pain camera</title>
     <style>
         body, html {
             margin: 0; padding: 0; width: 100%; height: 100%;
             overflow: hidden; background-color: #000;
         }
 
-        #camera-feed {
+        #camera-wrapper {
             position: absolute;
-            top: 0; left: 0; width: 100vw; height: 100vh;
-            object-fit: cover;
+            top: 0; left: 0; 
+            width: 100vw; height: 100vh;
             pointer-events: none;
-            
-            /* 10 秒循環的基礎色彩與呼吸模糊 */
-            animation: bubblegum-and-blur 10s linear infinite;
-            
-            /* 設定放大中心點為螢幕正中央，確保瘋狂放大時畫面不會歪掉 */
             transform-origin: center center;
+            will-change: transform;
+        }
+
+        #camera-feed {
+            width: 100%; height: 100%;
+            object-fit: cover;
+            animation: bubblegum-and-blur 10s linear infinite;
         }
 
         @keyframes bubblegum-and-blur {
@@ -28,14 +30,13 @@
                 filter: contrast(120%) saturate(260%) brightness(110%) hue-rotate(0deg) blur(0px);
             }
             50% {
-                filter: contrast(120%) saturate(260%) brightness(110%) hue-rotate(180deg) blur(5px);
+                filter: contrast(120%) saturate(260%) brightness(110%) hue-rotate(180deg) blur(15px);
             }
             100% {
                 filter: contrast(120%) saturate(260%) brightness(110%) hue-rotate(360deg) blur(0px);
             }
         }
 
-        /* 🥲 表情符號樣式 */
         #overlay-emoji {
             position: absolute;
             top: 50%; left: 50%;
@@ -55,7 +56,6 @@
             visibility: hidden;
         }
 
-        /* 超高頻故障閃白圖層（無過渡，瞬發瞬滅） */
         #flash-layer {
             position: absolute;
             top: 0; left: 0; width: 100vw; height: 100vh;
@@ -74,18 +74,21 @@
 </head>
 <body>
 
-    <video id="camera-feed" autoplay playsinline muted></video>
+    <div id="camera-wrapper">
+        <video id="camera-feed" autoplay playsinline muted></video>
+    </div>
+    
     <div id="overlay-emoji">🥲</div>
     <div id="flash-layer"></div>
     <div id="error-msg"></div>
 
     <script>
         const video = document.getElementById('camera-feed');
+        const cameraWrapper = document.getElementById('camera-wrapper');
         const errorMsg = document.getElementById('error-msg');
         const overlayEmoji = document.getElementById('overlay-emoji');
         const flashLayer = document.getElementById('flash-layer');
 
-        // 啟動相機
         if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
             const constraints = { video: { facingMode: "environment" }, audio: false };
             
@@ -94,12 +97,10 @@
                     video.srcObject = stream;
                     
                     video.onplaying = () => {
-                        // 兩秒後表情 fade out
                         setTimeout(() => {
                             overlayEmoji.classList.add('fade-out');
                         }, 1000);
                         
-                        // 啟動不規則高頻閃光與隨機放大排程
                         scheduleNextGlitch();
                     };
                     
@@ -112,42 +113,35 @@
             errorMsg.innerText = "你的瀏覽器不支援相機功能。";
         }
 
-        // 【新排程算法】每 3~5 秒隨機觸發一次
         function scheduleNextGlitch() {
             const randomCooldown = Math.random() * 2000 + 3000; // 3000ms ~ 5000ms
             setTimeout(() => {
                 triggerGlitchCluster(() => {
-                    // 【新規則】當整組超高頻閃光「最後一下」閃完的瞬間：
-                    // 隨機將畫面放大 5 ~ 10 倍（無過渡動畫，產生瞬間跳躍的硬切衝擊感）
-                    const randomScale = (Math.random() * 5 + 5).toFixed(2); // 5.00 ~ 10.00
-                    video.style.transform = `scale(${randomScale})`;
+                    // 【修改這裡】範圍拓寬為 1.00 ~ 10.00 倍隨機縮放
+                    const randomScale = (Math.random() * 9 + 1).toFixed(2); 
+                    cameraWrapper.style.transform = `scale(${randomScale})`;
                     
-                    // 依此規則不斷循環下去
                     scheduleNextGlitch();
                 });
             }, randomCooldown);
         }
 
-        // 【超高頻閃爍演算法】
         function triggerGlitchCluster(callback) {
-            const flashCount = Math.floor(Math.random() * 4) + 3; // 一組隨機閃 3 ~ 6 下
+            const flashCount = Math.floor(Math.random() * 4) + 3; // 3 ~ 6 下
             let currentFlash = 0;
 
             function runSingleFlash() {
                 if (currentFlash >= flashCount) {
-                    callback(); // 閃完最後一下，回傳去執行畫面放大
+                    callback();
                     return;
                 }
 
-                // 強烈的高光過載透明度 (0.7 ~ 1.0)
                 flashLayer.style.opacity = (Math.random() * 0.3 + 0.7).toString();
                 
-                // 【5倍快】亮起時間極短：壓縮至 3ms ~ 12ms 之間
                 setTimeout(() => {
-                    flashLayer.style.opacity = '0'; // 熄滅
+                    flashLayer.style.opacity = '0';
                     currentFlash++;
                     
-                    // 【5倍快】下一下閃起前的黑暗間隔：壓縮至 8ms ~ 40ms 之間，形成神經質般的抽搐頻率
                     setTimeout(runSingleFlash, Math.random() * 32 + 8);
                 }, Math.random() * 9 + 3);
             }
