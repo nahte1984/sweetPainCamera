@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>v10.4.0 sweet pain kaleidoscope</title>
+    <title>v10.4.5 sweet pain kaleidoscope</title>
     <style>
         body, html {
             margin: 0; padding: 0; width: 100%; height: 100%;
@@ -46,41 +46,40 @@
             background: radial-gradient(circle at center, transparent 20%, rgba(0,0,0,0.5) 65%, rgba(0,0,0,0.92) 100%);
         }
 
-        /* 【全新升級】滿版巨幅襯線詩句詩行樣式 */
+        /* 【究極巨大化】巨幅粗襯線體巨型文字牆 */
         #overlay-text {
             position: absolute;
             top: 0; left: 0; 
             width: 100vw; height: 100vh;
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
             text-align: center;
             
-            /* 精選高級感襯線字體堆疊 */
+            /* 經典重襯線字體 */
             font-family: Georgia, "Times New Roman", "Times", serif;
-            font-size: 6vw; /* 依據螢幕寬度動態滿版覆蓋 */
-            line-height: 1.5;
+            font-size: 10.5vh; /* 改用 vh 強制讓 7 行文字垂直撐滿整個螢幕上下 */
+            font-weight: 900;  /* 讓字體極度粗重、具備海報印刷感 */
+            line-height: 1.1;  /* 緊密的行距，創造強烈的排版壓縮感 */
+            letter-spacing: -1px;
             color: #ffffff;
-            padding: 40px;
+            padding: 20px;
             box-sizing: border-box;
-            word-break: break-word;
             
-            /* 允許點擊事件，並提示使用者這層可以點擊開關 */
             cursor: pointer;
             user-select: none;
             z-index: 20; 
             
-            /* 深邃低調的文字陰影，確保在色彩多變的萬花筒下依然清晰可讀 */
-            text-shadow: 0px 4px 20px rgba(0, 0, 0, 0.8), 0px 0px 10px rgba(0, 0, 0, 0.5);
+            /* 加深加重的多層次文字陰影，確保在刺眼閃白與鮮豔色彩下依然能被肉眼辨識 */
+            text-shadow: 0px 4px 30px rgba(0, 0, 0, 0.95), 0px 0px 15px rgba(0, 0, 0, 0.8);
             
-            /* 平滑淡出動畫過渡 */
             transition: opacity 1.2s ease-out, visibility 1.2s ease-out;
             opacity: 1;
             visibility: visible;
-            -webkit-tap-highlight-color: transparent; /* 移除手機點擊時的灰色高亮框 */
+            -webkit-tap-highlight-color: transparent;
         }
 
-        /* 點擊後觸發淡出隱藏 */
         #overlay-text.fade-out {
             opacity: 0;
             visibility: hidden;
@@ -113,7 +112,7 @@
     
     <video id="camera-feed" autoplay playsinline muted style="position:absolute; width:1px; height:1px; opacity:0; pointer-events:none;"></video>
     
-    <div id="overlay-text">И горько жалуюсь, и горько слезы лью, но строк печальных не смываю.</div>
+    <div id="overlay-text">И горько<br>жалуюсь,<br>и горько<br>слезы лью,<br>но строк<br>печальных<br>не смываю.</div>
     
     <div id="flash-layer"></div>
     <div id="error-msg"></div>
@@ -131,7 +130,6 @@
         let currentScale = 1.00; 
         let lastScale = 1.00;
 
-        // 啟動相機
         if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
             const constraints = { video: { facingMode: "environment" }, audio: false };
             
@@ -140,7 +138,6 @@
                     video.srcObject = stream;
                     
                     video.onplaying = () => {
-                        // 移除原本的自動倒數淡出，讓詩句老老實實留在畫面上
                         requestAnimationFrame(renderCentralKaleidoscope);
                         scheduleNextGlitch();
                     };
@@ -153,9 +150,9 @@
             errorMsg.innerText = "你的瀏覽器不支援相機功能。";
         }
 
-        // 【全新修改】點擊文字本身觸發 fade out 淡出
+        // 點擊巨大文字本身觸發 fade out 淡出，且防冒泡誤觸拍照
         overlayText.addEventListener('pointerdown', (e) => {
-            e.stopPropagation(); // 核心：阻止事件向後冒泡，防止點擊關閉詩句時誤觸相機故障高頻快閃
+            e.stopPropagation(); 
             overlayText.classList.add('fade-out');
         });
 
@@ -224,7 +221,7 @@
                     let targetScaleNum;
 
                     do {
-                        randomScale = (Math.random() * 0.5 + 1).toFixed(2); // 1.00 ~ 1.50
+                        randomScale = (Math.random() * 0.5 + 1).toFixed(2); // 限制在 1.00 ~ 1.50
                         targetScaleNum = parseFloat(randomScale);
                     } while (Math.abs(targetScaleNum - lastScale) < 0.15);
                     
