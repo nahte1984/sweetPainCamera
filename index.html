@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>v9.0.4 sweet pain camera</title>
+    <title>v9.0.5 sweet pain camera</title>
     <style>
         body, html {
             margin: 0; padding: 0; width: 100%; height: 100%;
@@ -89,6 +89,9 @@
         const overlayEmoji = document.getElementById('overlay-emoji');
         const flashLayer = document.getElementById('flash-layer');
 
+        // 用來記錄上一次的放大倍率，防止連續抽到相似的大小
+        let lastScale = 1.00;
+
         if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
             const constraints = { video: { facingMode: "environment" }, audio: false };
             
@@ -114,11 +117,24 @@
         }
 
         function scheduleNextGlitch() {
-            const randomCooldown = Math.random() * 500 + 3000; // 3000ms ~ 5000ms
+            // 1. 修改為 1 秒到 3 秒之間隨機觸發 (1000ms ~ 3000ms)
+            const randomCooldown = Math.random() * 2000 + 1000; 
+            
             setTimeout(() => {
                 triggerGlitchCluster(() => {
-                    // 【修改這裡】範圍拓寬為 1.00 ~ 10.00 倍隨機縮放
-                    const randomScale = (Math.random() * 3 + 1).toFixed(2); 
+                    let randomScale;
+                    let targetScaleNum;
+
+                    // 2. 透過迴圈驗證，確保新尺寸與上一次的尺寸至少有 0.5 以上的顯著跳躍差距
+                    do {
+                        randomScale = (Math.random() * 3 + 1).toFixed(2); // 維持你設定的 1~4 倍率設計
+                        targetScaleNum = parseFloat(randomScale);
+                    } while (Math.abs(targetScaleNum - lastScale) < 0.5);
+                    
+                    // 更新記憶歷史數值
+                    lastScale = targetScaleNum;
+                    
+                    // 執行縮放
                     cameraWrapper.style.transform = `scale(${randomScale})`;
                     
                     scheduleNextGlitch();
