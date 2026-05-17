@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>v9.3.0 sweet pain kaleidoscope camera</title>
+    <title>v9.4.0 sweet pain central kaleidoscope</title>
     <style>
         body, html {
             margin: 0; padding: 0; width: 100%; height: 100%;
             overflow: hidden; background-color: #000;
         }
 
-        /* 萬花筒幾何外殼：現在完全固定，不再進行全域縮放 */
+        /* 萬花筒外殼：絕對固定，不進行全域縮放 */
         #camera-wrapper {
             position: absolute;
             top: 0; left: 0; 
@@ -18,7 +18,7 @@
             pointer-events: none;
         }
 
-        /* 保持 10 秒泡泡糖色相環與 5px 精緻模糊 */
+        /* 保持 10 秒泡泡糖色相環與 5px 精緻模糊效果 */
         #kaleidoscope-canvas {
             width: 100%; height: 100%;
             display: block;
@@ -37,6 +37,7 @@
             }
         }
 
+        /* 🥲 表情符號 */
         #overlay-emoji {
             position: absolute;
             top: 50%; left: 50%;
@@ -56,7 +57,7 @@
             visibility: hidden;
         }
 
-        /* 整個畫面全螢幕閃白圖層 */
+        /* 全螢幕故障閃白層 */
         #flash-layer {
             position: absolute;
             top: 0; left: 0; width: 100vw; height: 100vh;
@@ -95,10 +96,11 @@
         const overlayEmoji = document.getElementById('overlay-emoji');
         const flashLayer = document.getElementById('flash-layer');
 
-        // 全域控制變數
-        let currentScale = 1.00; // 內部畫面的即時放大倍率
+        // 控制參數
+        let currentScale = 1.00; // 核心等份內畫面的縮放倍率
         let lastScale = 1.00;
 
+        // 啟動相機
         if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
             const constraints = { video: { facingMode: "environment" }, audio: false };
             
@@ -107,11 +109,15 @@
                     video.srcObject = stream;
                     
                     video.onplaying = () => {
+                        // 1秒後開場表情優雅淡出
                         setTimeout(() => {
                             overlayEmoji.classList.add('fade-out');
                         }, 1000);
                         
-                        requestAnimationFrame(renderKaleidoscope);
+                        // 啟動 12 等份中央萬花筒渲染
+                        requestAnimationFrame(renderCentralKaleidoscope);
+                        
+                        // 啟動 1~3 秒隨機故障閃白與抽搐放大排程
                         scheduleNextGlitch();
                     };
                     video.play();
@@ -123,80 +129,65 @@
             errorMsg.innerText = "你的瀏覽器不支援相機功能。";
         }
 
-        // --- 【萬花筒渲染引擎】 ---
-        function renderKaleidoscope() {
+        // --- 【全新設計：以畫面中心為原點的 12 等份對稱萬花筒引擎】 ---
+        function renderCentralKaleidoscope() {
             if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                // 自動隨螢幕尺寸重設畫布大小
                 if (canvas.width !== window.innerWidth || canvas.height !== window.innerHeight) {
                     canvas.width = window.innerWidth;
                     canvas.height = window.innerHeight;
                 }
 
-                const screenWidth = canvas.width;
-                const screenHeight = canvas.height;
+                const cx = canvas.width / 2;
+                const cy = canvas.height / 2;
 
-                ctx.clearRect(0, 0, screenWidth, screenHeight);
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-                // Fig. 36 幾何比例計算 (H = 長直角邊)
-                const H = Math.max(screenWidth, screenHeight) * 0.4;
-                const W = H * Math.tan(30 * Math.PI / 180); // 短直角邊
+                // 計算能完美覆蓋整個螢幕四個角落的半徑大小
+                const radius = Math.sqrt(cx * cx + cy * cy);
+                const rad30 = 30 * Math.PI / 180; // 30 度的弧度 (360度 / 12等份)
 
-                const hSpacing = H * Math.sqrt(3);
-                const vSpacing = H * 2;
-
-                const cols = Math.ceil(screenWidth / hSpacing) + 2;
-                const rows = Math.ceil(screenHeight / vSpacing) + 2;
-
-                // 【修正重點2】依據當前隨機倍率 (currentScale) 動態縮小視訊擷取框，達成「形狀內放大」效果
+                // 依據即時變動的 currentScale 計算相機畫面擷取框
                 const baseVSize = Math.min(video.videoWidth, video.videoHeight) * 0.6;
-                const zoomedVSize = baseVSize / currentScale; 
+                const zoomedVSize = baseVSize / currentScale;
                 
                 const sx = (video.videoWidth - zoomedVSize) / 2;
                 const sy = (video.videoHeight - zoomedVSize) / 2;
 
-                // 微幅緩慢飄移
-                const driftX = Math.sin(Date.now() / 3000) * (video.videoWidth - zoomedVSize) * 0.05;
-                const driftY = Math.cos(Date.now() / 3000) * (video.videoHeight - zoomedVSize) * 0.05;
+                // 鏡頭內部微幅動態飄移（增添呼吸感）
+                const driftX = Math.sin(Date.now() / 3000) * (video.videoWidth - zoomedVSize) * 0.04;
+                const driftY = Math.cos(Date.now() / 3000) * (video.videoHeight - zoomedVSize) * 0.04;
 
-                for (let c = -1; c < cols; c++) {
-                    for (let r = -1; r < rows; r++) {
-                        let cx = c * hSpacing;
-                        let cy = r * vSpacing;
-
-                        if (Math.abs(c) % 2 === 1) {
-                            cy += H;
-                        }
-
-                        // 12 瓣鏡像反射
-                        for (let i = 0; i < 12; i++) {
-                            ctx.save();
-                            ctx.translate(cx, cy);
-                            ctx.rotate(i * 30 * Math.PI / 180);
-                            
-                            if (i % 2 === 1) {
-                                ctx.scale(1, -1);
-                            }
-
-                            // 精準切出 Fig. 36 三角片
-                            ctx.beginPath();
-                            ctx.moveTo(0, 0);
-                            ctx.lineTo(W, H);
-                            ctx.lineTo(0, H);
-                            ctx.closePath();
-                            ctx.clip();
-
-                            // 【修正重點1】改為以 (-H, -H) 為中心均勻壓製，徹底解決鏡像時產生的黑畫面 Bug
-                            ctx.drawImage(
-                                video, 
-                                sx + driftX, sy + driftY, zoomedVSize, zoomedVSize, 
-                                -H, -H, H * 2, H * 2
-                            );
-                            
-                            ctx.restore();
-                        }
+                // 繞著中心點環繞繪製 12 塊三角切片
+                for (let i = 0; i < 12; i++) {
+                    ctx.save();
+                    ctx.translate(cx, cy); // 移到螢幕中心
+                    ctx.rotate(i * rad30); // 旋轉對應角度
+                    
+                    // 兩兩對稱關鍵：奇數片進行水平翻轉，達成完璧的物理鏡面反射
+                    if (i % 2 === 1) {
+                        ctx.scale(1, -1);
                     }
+
+                    // 精準裁剪出 30 度的放射狀扇形切片
+                    ctx.beginPath();
+                    ctx.moveTo(0, 0);
+                    ctx.lineTo(radius, 0);
+                    ctx.lineTo(radius * Math.cos(rad30), radius * Math.sin(rad30));
+                    ctx.closePath();
+                    ctx.clip();
+
+                    // 將視訊畫面以螢幕中心為錨點均勻向外擴散，完全消滅黑邊
+                    ctx.drawImage(
+                        video,
+                        sx + driftX, sy + driftY, zoomedVSize, zoomedVSize,
+                        -radius, -radius, radius * 2, radius * 2
+                    );
+
+                    ctx.restore();
                 }
             }
-            requestAnimationFrame(renderKaleidoscope);
+            requestAnimationFrame(renderCentralKaleidoscope);
         }
 
         // 隨機故障排程：1秒到3秒間隨機觸發
@@ -208,15 +199,15 @@
                     let randomScale;
                     let targetScaleNum;
 
-                    // 驗證機制：確保尺寸跳躍差距
+                    // 驗證機制：確保每次等份內縮放都有大於 0.5 的明顯跳躍，避免視覺卡頓錯覺
                     do {
-                        randomScale = (Math.random() * 3 + 1).toFixed(2); // 1~4 倍率
+                        randomScale = (Math.random() * 3 + 1).toFixed(2); // 1~4 倍率縮放
                         targetScaleNum = parseFloat(randomScale);
                     } while (Math.abs(targetScaleNum - lastScale) < 0.5);
                     
                     lastScale = targetScaleNum;
                     
-                    // 變更內部視訊放大倍率，不再變動外層相機Wrapper
+                    // 更新內部畫面縮放（幾何外框此時絕對固定靜止）
                     currentScale = targetScaleNum;
                     
                     scheduleNextGlitch();
@@ -224,7 +215,7 @@
             }, randomCooldown);
         }
 
-        // 超高頻閃爍演算法
+        // 超高頻閃爍演算法（一組閃爍3~6下）
         function triggerGlitchCluster(callback) {
             const flashCount = Math.floor(Math.random() * 4) + 3; 
             let currentFlash = 0;
