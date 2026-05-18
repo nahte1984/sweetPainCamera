@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-color=1.0, user-scalable=no">
-    <title>v10.5.0 sweet pain kaleidoscope</title>
+    <title>v10.6.0 sweet pain kaleidoscope</title>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -42,13 +42,26 @@
             }
         }
 
-        /* 電影感硬體加速暗角遮罩 */
+        /* 【全新：畫面中心強效加亮層】 */
+        #center-highlight {
+            position: absolute;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            pointer-events: none;
+            z-index: 4; /* 位於畫布之上，暗角遮罩之下 */
+            /* 在中心核心投射出高亮度白光，並向外柔和擴散 */
+            background: radial-gradient(circle at center, rgba(255, 255, 255, 0.65) 0%, rgba(255, 255, 255, 0.2) 20%, transparent 55%);
+            /* overlay 混合模式能在完美保留並增強萬花筒色彩飽和度的同時，將中心大幅提亮 */
+            mix-blend-mode: overlay; 
+        }
+
+        /* 【優化：暗角邊緣加深遮罩】配合中心加亮，將對比度拉到極限 */
         #vignette-overlay {
             position: absolute;
             top: 0; left: 0; width: 100vw; height: 100vh;
             pointer-events: none;
             z-index: 5;
-            background: radial-gradient(circle at center, transparent 20%, rgba(0,0,0,0.5) 65%, rgba(0,0,0,0.92) 100%);
+            /* 縮小中央純淨區（10%），加快邊緣墜入深邃濃黑（96%）的速度，產生強烈明暗反差 */
+            background: radial-gradient(circle at center, transparent 10%, rgba(0,0,0,0.55) 50%, rgba(0,0,0,0.96) 100%);
         }
 
         /* 全畫面文字一體化樣式 */
@@ -62,9 +75,8 @@
             justify-content: center;
             text-align: center;
             
-            /* 切換為全新指定的 Bona Nova 字體與 20級字重規範 */
             font-family: 'Bona Nova', Georgia, serif;
-            font-size: 15px;   /* 精準設定 20級 */
+            font-size: 15px;   
             font-weight: 400;  
             line-height: 1.2;  
             letter-spacing: 0.5px; 
@@ -76,7 +88,6 @@
             user-select: none;
             z-index: 20; 
             
-            /* 輕量級文字陰影，保護細緻字體的邊緣 */
             text-shadow: 0px 2px 10px rgba(0, 0, 0, 0.85);
             
             transition: opacity 1.2s ease-out, visibility 1.2s ease-out;
@@ -113,6 +124,7 @@
         <canvas id="kaleidoscope-canvas"></canvas>
     </div>
     
+    <div id="center-highlight"></div>
     <div id="vignette-overlay"></div>
     
     <video id="camera-feed" autoplay playsinline muted style="position:absolute; width:1px; height:1px; opacity:0; pointer-events:none;"></video>
