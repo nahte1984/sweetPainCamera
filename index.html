@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-color=1.0, user-scalable=no">
-    <title>sweet pain kaleidoscope | v10.6.4</title>
+    <title>v10.6.5 | sweet pain kaleidoscope</title>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -35,7 +35,7 @@
                 filter: contrast(110%) saturate(260%) brightness(110%) hue-rotate(0deg) blur(0px);
             }
             50% {
-                filter: contrast(120%) saturate(360%) brightness(180%) hue-rotate(90deg) blur(3.1px);
+                filter: contrast(110%) saturate(260%) brightness(110%) hue-rotate(90deg) blur(3.1px);
             }
             100% {
                 filter: contrast(110%) saturate(260%) brightness(110%) hue-rotate(0deg) blur(0px);
@@ -49,7 +49,7 @@
             pointer-events: none;
             z-index: 4; /* 位於畫布之上，暗角遮罩之下 */
             /* 在中心核心投射出高亮度白光，並向外柔和擴散 */
-            background: radial-gradient(circle at center, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.31) 20%, transparent 55%);
+            background: radial-gradient(circle at center, rgba(255, 255, 255, 0.66) 0%, rgba(255, 255, 255, 0.31) 31%, transparent 55%);
             /* overlay 混合模式能在完美保留並增強萬花筒色彩飽和度的同時，將中心大幅提亮 */
             mix-blend-mode: overlay; 
         }
@@ -61,7 +61,7 @@
             pointer-events: none;
             z-index: 5;
             /* 縮小中央純淨區（10%），加快邊緣墜入深邃濃黑（96%）的速度，產生強烈明暗反差 */
-            background: radial-gradient(circle at center, transparent 31%, rgba(0,0,0,0.55) 66%, rgba(0,0,0,0.75) 100%);
+            background: radial-gradient(circle at center, transparent 31%, rgba(0,0,0,0.55) 66%, rgba(0,0,0,0.95) 100%);
         }
 
         /* 全畫面文字一體化樣式 */
@@ -105,7 +105,7 @@
         #flash-layer {
             position: absolute;
             top: 0; left: 0; width: 100vw; height: 100vh;
-            background-color: #fff;
+            background-color: #0000ff;
             opacity: 0;
             pointer-events: none;
             z-index: 100;
