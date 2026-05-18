@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-color=1.0, user-scalable=no">
-    <title>v10.6.0 sweet pain kaleidoscope</title>
+    <title>v10.6.1 sweet pain kaleidoscope</title>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -49,7 +49,7 @@
             pointer-events: none;
             z-index: 4; /* 位於畫布之上，暗角遮罩之下 */
             /* 在中心核心投射出高亮度白光，並向外柔和擴散 */
-            background: radial-gradient(circle at center, rgba(255, 255, 255, 0.65) 0%, rgba(255, 255, 255, 0.2) 20%, transparent 55%);
+            background: radial-gradient(circle at center, rgba(255, 255, 255, 0.65) 0%, rgba(255, 255, 255, 0.31) 20%, transparent 55%);
             /* overlay 混合模式能在完美保留並增強萬花筒色彩飽和度的同時，將中心大幅提亮 */
             mix-blend-mode: overlay; 
         }
@@ -61,7 +61,7 @@
             pointer-events: none;
             z-index: 5;
             /* 縮小中央純淨區（10%），加快邊緣墜入深邃濃黑（96%）的速度，產生強烈明暗反差 */
-            background: radial-gradient(circle at center, transparent 10%, rgba(0,0,0,0.55) 50%, rgba(0,0,0,0.96) 100%);
+            background: radial-gradient(circle at center, transparent 31%, rgba(0,0,0,0.55) 66%, rgba(0,0,0,0.96) 100%);
         }
 
         /* 全畫面文字一體化樣式 */
@@ -169,10 +169,10 @@
                     video.play();
                 })
                 .catch(function(err) {
-                    errorMsg.innerText = "無法存取相機，請確認已給予權限。";
+                    errorMsg.innerText = "Нет до́ступа к ка́мере. Пожа́луйста, прове́рьте разреше́ния.";
                 });
         } else {
-            errorMsg.innerText = "你的瀏覽器不支援相機功能。";
+            errorMsg.innerText = "Ваш браузе́р не подде́рживает ка́меру.";
         }
 
         // 點擊文字區塊本身觸發 fade out 淡出
